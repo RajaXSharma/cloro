@@ -1,0 +1,10 @@
+{
+  "name": "cloro",
+  "private": true,
+  "description": "Cloro collaborative code editor",
+  "main": "index.js",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:backend": "pnpm --filter backend dev"
+  }
+}

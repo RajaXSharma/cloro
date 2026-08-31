@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: cloro
+      POSTGRES_PASSWORD: cloro
+      POSTGRES_DB: cloro
+    volumes:
+      - cloro-data:/var/lib/postgresql/data
+
+volumes:
+  cloro-data:
