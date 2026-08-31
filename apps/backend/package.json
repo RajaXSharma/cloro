@@ -1,12 +1,18 @@
 {
   "name": "backend",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx --env-file=../../.env watch src/index.ts",
+    "migrate": "tsx --env-file=../../.env scripts/migrate.ts"
+  },
   "dependencies": {
     "@hocuspocus/server": "^4.6.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jose": "^6.2.10",
+    "morgan": "^1.12.0",
     "openai": "^7.8.0",
     "pg": "^8.23.0",
     "yjs": "^13.6.32",
@@ -15,6 +21,8 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^26.4.0",
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
