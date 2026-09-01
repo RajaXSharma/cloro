@@ -6,12 +6,12 @@ import { query } from '../db.js';
 const registerSchema = z.object({
   email: z.email(),
   password: z.string().min(6),
-  name: z.string().min(1),
+  name: z.string().min(3),
 });
 
 const verifySchema = z.object({
   email: z.email(),
-  password: z.string().min(1),
+  password: z.string().min(8),
 });
 
 export const authRouter = Router();
@@ -32,7 +32,7 @@ authRouter.post('/register', async (req, res) => {
   res.status(201).json(rows[0]);
 });
 
-authRouter.post('/verify-credentials', async (req, res) => {
+authRouter.post('/verifyCredentials', async (req, res) => {
   const parsed = verifySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'invalid fields' });
   const { email, password } = parsed.data;
