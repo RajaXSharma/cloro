@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --env-file=../../.env watch src/index.ts",
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
     "migrate": "tsx --env-file=../../.env scripts/migrate.ts"
   },
   "dependencies": {

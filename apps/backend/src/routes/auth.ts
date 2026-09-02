@@ -3,15 +3,18 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { query } from '../db.js';
 
+const PASSWORD_MIN = 6;
+
 const registerSchema = z.object({
   email: z.email(),
-  password: z.string().min(6),
+  password: z.string().min(PASSWORD_MIN),
   name: z.string().min(3),
 });
 
+
 const verifySchema = z.object({
   email: z.email(),
-  password: z.string().min(8),
+  password: z.string().min(1),
 });
 
 export const authRouter = Router();
