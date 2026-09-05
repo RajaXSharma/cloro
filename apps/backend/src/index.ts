@@ -1,14 +1,11 @@
-import { Server } from '@hocuspocus/server';
 import { createApp } from './http.js';
+import { hocuspocus } from './collab.js';
 
 const app = createApp();
 const httpServer = app.listen(Number(process.env.PORT ?? 4000), () => {
   console.log(`HTTP listening on :${process.env.PORT ?? 4000}`);
 });
 
-const hocuspocus = new Server({
-  port: Number(process.env.HOCUSPUS_PORT ?? 1234),
-});
 await hocuspocus.listen();
 console.log(`WebSocket listening on :${process.env.HOCUSPUS_PORT ?? 1234}`);
 
