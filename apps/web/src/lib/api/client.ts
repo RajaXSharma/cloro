@@ -1,6 +1,6 @@
 let cachedToken: string | null = null;
 
-async function fetchToken(): Promise<string> {
+export async function fetchToken(): Promise<string> {
   const res = await fetch('/api/auth/token');
   if (!res.ok) throw new Error('unauthenticated');
   const { token } = await res.json();
