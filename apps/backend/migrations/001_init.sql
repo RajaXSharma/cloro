@@ -25,16 +25,6 @@ create table doc_collaborators (
   unique (document_id, user_id)
 );
 
-create table comments (
-  id uuid primary key default gen_random_uuid(),
-  document_id uuid not null references documents(id) on delete cascade,
-  user_id uuid not null references users(id) on delete cascade,
-  content text not null,
-  anchor jsonb,
-  parent_id uuid references comments(id) on delete cascade,
-  created_at timestamptz not null default now()
-);
-
 create table doc_snapshots (
   id uuid primary key default gen_random_uuid(),
   document_id uuid not null references documents(id) on delete cascade,
