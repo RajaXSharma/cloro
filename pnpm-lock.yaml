@@ -116,6 +116,9 @@ importers:
       y-monaco:
         specifier: ^0.1.6
         version: 0.1.6(monaco-editor@0.45.0)(yjs@13.6.32)
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7
       yjs:
         specifier: ^13.6.32
         version: 13.6.32

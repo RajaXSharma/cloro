@@ -4,6 +4,8 @@ import { useState } from 'react';
 import type * as Y from 'yjs';
 import { api } from '@/lib/api/client';
 import type { CollabStatus } from '@/lib/yjs/useYDoc';
+import { UserList } from '@/components/editor/presence';
+import type { Awareness } from 'y-protocols/awareness';
 
 const LANGUAGES = [
   'plaintext',
@@ -23,10 +25,11 @@ interface Props {
   language: string;
   yMeta: Y.Map<unknown>;
   status: CollabStatus;
+  awareness: Awareness | null;
   onLanguage: (lang: string) => void;
 }
 
-export function Toolbar({ docId, initialName, language, yMeta, status, onLanguage }: Props) {
+export function Toolbar({ docId, initialName, language, yMeta, status, awareness, onLanguage }: Props) {
   const [name, setName] = useState(initialName);
 
   async function patch(body: Record<string, unknown>) {
@@ -62,7 +65,8 @@ export function Toolbar({ docId, initialName, language, yMeta, status, onLanguag
           </option>
         ))}
       </select>
-      <span className="ml-auto text-xs text-muted-foreground">{status}</span>
+      <UserList awareness={awareness} />
+      <span className="text-xs text-muted-foreground">{status}</span>
     </div>
   );
 }

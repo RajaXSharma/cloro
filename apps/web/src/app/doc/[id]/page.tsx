@@ -6,10 +6,11 @@ import { api } from '@/lib/api/client';
 import { useYDoc } from '@/lib/yjs/useYDoc';
 import { Editor } from '@/components/editor/Editor';
 import { Toolbar } from '@/components/editor/Toolbar';
+import { CursorStyles } from '@/components/editor/presence';
 
 export default function DocPage() {
   const { id } = useParams<{ id: string }>();
-  const { yDoc, provider, undoManager, status } = useYDoc(id);
+  const { yDoc, provider, undoManager, status, awareness } = useYDoc(id);
   const [docName, setDocName] = useState<string | null>(null);
   const [language, setLanguage] = useState('plaintext');
 
@@ -29,12 +30,14 @@ export default function DocPage() {
 
   return (
     <div className="flex h-screen flex-col">
+      <CursorStyles awareness={awareness} />
       <Toolbar
         docId={id}
         initialName={docName}
         language={language}
         yMeta={yMeta}
         status={status}
+        awareness={awareness}
         onLanguage={setLanguage}
       />
       {provider ? (

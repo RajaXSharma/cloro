@@ -128,7 +128,7 @@
     @apply font-sans;
   }
 }
-/* y-monaco remote cursors/selections (P5: awareness wired; labels land in P6) */
+/* y-monaco remote cursors/selections; per-client colors + name labels injected by presence.tsx */
 .yRemoteSelection {
   background-color: rgba(59, 130, 246, 0.25);
 }
@@ -136,4 +136,15 @@
   position: absolute;
   border-left: 2px solid #3b82f6;
   border-top: 2px solid #3b82f6;
+}
+.yRemoteSelectionHead::after {
+  content: '';
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
