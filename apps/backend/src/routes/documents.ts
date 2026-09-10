@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
+import { isMember, query } from "../db.js";
+import { snapshotsRouter } from "./snapshots.js";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -13,6 +14,9 @@ const updateSchema = z.object({
 });
 
 export const documentsRouter = Router();
+
+// nested snapshot routes: /documents/:id/snapshots
+documentsRouter.use("/:id/snapshots", snapshotsRouter);
 
 // Every route here sits behind requireAuth (mounted in http.ts), so req.user exists.
 
@@ -45,14 +49,10 @@ documentsRouter.post("/", async (req, res) => {
 });
 
 documentsRouter.get("/:id", async (req, res) => {
+  if (!(await isMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
   const { rows } = await query(
-    `select d.id, d.name, d.language, d.owner_id, d.created_at, d.updated_at
-     from documents d
-     where d.id = $1
-       and (d.owner_id = $2
-            or exists (select 1 from doc_collaborators c
-                       where c.document_id = d.id and c.user_id = $2))`,
-    [req.params.id, req.user!.id],
+    "select id, name, language, owner_id, created_at, updated_at from documents where id = $1",
+    [req.params.id],
   );
   if (!rows[0]) return res.status(403).json({ error: "forbidden" });
   res.json(rows[0]);

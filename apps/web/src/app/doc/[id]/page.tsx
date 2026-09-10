@@ -7,6 +7,7 @@ import { useYDoc } from '@/lib/yjs/useYDoc';
 import { Editor } from '@/components/editor/Editor';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { CursorStyles } from '@/components/editor/presence';
+import { VersionPanel } from '@/components/editor/version-panel';
 
 export default function DocPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,12 +42,19 @@ export default function DocPage() {
         onLanguage={setLanguage}
       />
       {provider ? (
-        <Editor
-          yDoc={yDoc}
-          provider={provider}
-          undoManager={undoManager}
-          language={language}
-        />
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1">
+            <Editor
+              yDoc={yDoc}
+              provider={provider}
+              undoManager={undoManager}
+              language={language}
+            />
+          </div>
+          <aside className="w-56 shrink-0 overflow-y-auto border-l">
+            <VersionPanel docId={id} />
+          </aside>
+        </div>
       ) : (
         <p className="p-8 text-sm text-muted-foreground">Connecting…</p>
       )}
