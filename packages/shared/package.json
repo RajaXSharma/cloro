@@ -1,7 +1,19 @@
 {
   "name": "shared",
   "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
     "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "tsx": "^4.23.13",
+    "yjs": "^13.6.32"
+  },
+  "scripts": {
+    "check": "tsx src/edit-ops.check.ts"
   }
 }

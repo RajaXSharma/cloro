@@ -14,7 +14,11 @@ export async function api(path: string, init: RequestInit = {}): Promise<Respons
   const doFetch = (t: string) =>
     fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`, {
       ...init,
-      headers: { ...init.headers, Authorization: `Bearer ${t}` },
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : null),
+        ...init.headers,
+        Authorization: `Bearer ${t}`,
+      },
     });
 
   let res = await doFetch(token);
