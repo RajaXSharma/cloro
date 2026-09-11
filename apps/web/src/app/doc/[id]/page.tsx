@@ -52,6 +52,11 @@ export default function DocPage() {
         onLanguage={setLanguage}
         onShare={isOwner ? () => shareRef.current?.showModal() : undefined}
       />
+      {status === 'disconnected' && (
+        <div className="bg-red-600 px-4 py-1.5 text-center text-xs text-white">
+          Connection lost — reconnecting…
+        </div>
+      )}
       {provider ? (
         <>
         <div className="flex flex-1 overflow-hidden">
