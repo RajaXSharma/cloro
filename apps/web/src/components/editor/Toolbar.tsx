@@ -27,9 +27,10 @@ interface Props {
   status: CollabStatus;
   awareness: Awareness | null;
   onLanguage: (lang: string) => void;
+  onShare?: () => void;
 }
 
-export function Toolbar({ docId, initialName, language, yMeta, status, awareness, onLanguage }: Props) {
+export function Toolbar({ docId, initialName, language, yMeta, status, awareness, onLanguage, onShare }: Props) {
   const [name, setName] = useState(initialName);
 
   async function patch(body: Record<string, unknown>) {
@@ -67,6 +68,15 @@ export function Toolbar({ docId, initialName, language, yMeta, status, awareness
       </select>
       <UserList awareness={awareness} />
       <span className="text-xs text-muted-foreground">{status}</span>
+      {onShare && (
+        <button
+          type="button"
+          onClick={onShare}
+          className="ml-auto rounded-md border px-2 py-1 text-xs hover:bg-muted"
+        >
+          Share
+        </button>
+      )}
     </div>
   );
 }

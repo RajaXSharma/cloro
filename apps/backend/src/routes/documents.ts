@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { isMember, query } from "../db.js";
 import { snapshotsRouter } from "./snapshots.js";
+import { collaboratorsRouter } from "./collaborators.js";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -17,6 +18,8 @@ export const documentsRouter = Router();
 
 // nested snapshot routes: /documents/:id/snapshots
 documentsRouter.use("/:id/snapshots", snapshotsRouter);
+// nested collaborator routes: /documents/:id/collaborators
+documentsRouter.use("/:id/collaborators", collaboratorsRouter);
 
 // Every route here sits behind requireAuth (mounted in http.ts), so req.user exists.
 
@@ -51,8 +54,9 @@ documentsRouter.post("/", async (req, res) => {
 documentsRouter.get("/:id", async (req, res) => {
   if (!(await isMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
   const { rows } = await query(
-    "select id, name, language, owner_id, created_at, updated_at from documents where id = $1",
-    [req.params.id],
+    `select id, name, language, owner_id, (owner_id = $2) as is_owner, created_at, updated_at
+     from documents where id = $1`,
+    [req.params.id, req.user!.id],
   );
   if (!rows[0]) return res.status(403).json({ error: "forbidden" });
   res.json(rows[0]);

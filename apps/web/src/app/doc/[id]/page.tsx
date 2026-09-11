@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api/client';
 import { useYDoc } from '@/lib/yjs/useYDoc';
@@ -9,13 +9,16 @@ import { Toolbar } from '@/components/editor/Toolbar';
 import { CursorStyles } from '@/components/editor/presence';
 import { VersionPanel } from '@/components/editor/version-panel';
 import { AiSidebar } from '@/components/ai/ai-sidebar';
+import { ShareDialog } from '@/components/editor/share-dialog';
 
 export default function DocPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { yDoc, provider, undoManager, status, awareness } = useYDoc(id);
   const [docName, setDocName] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [language, setLanguage] = useState('plaintext');
+  const shareRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     api(`/documents/${id}`)
@@ -24,9 +27,10 @@ export default function DocPage() {
         if (!res.ok) return router.replace('/dashboard');
         return res.json();
       })
-      .then((doc: { name: string; language: string } | null) => {
+      .then((doc: { name: string; language: string; is_owner: boolean } | null) => {
         if (!doc) return;
         setDocName(doc.name);
+        setIsOwner(doc.is_owner);
         setLanguage(doc.language);
       });
   }, [id, router]);
@@ -46,8 +50,10 @@ export default function DocPage() {
         status={status}
         awareness={awareness}
         onLanguage={setLanguage}
+        onShare={isOwner ? () => shareRef.current?.showModal() : undefined}
       />
       {provider ? (
+        <>
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1">
             <Editor
@@ -66,6 +72,8 @@ export default function DocPage() {
             </div>
           </aside>
         </div>
+        <ShareDialog docId={id} dialogRef={shareRef} />
+        </>
       ) : (
         <p className="p-8 text-sm text-muted-foreground">Connecting…</p>
       )}
