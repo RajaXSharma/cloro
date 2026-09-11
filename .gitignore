@@ -1,7 +1,25 @@
+# deps / builds
 node_modules/
 .next/
 dist/
+*.tsbuildinfo
+
+# env / secrets
 .env
+.env.local
+
+# logs
 *.log
+
+# scratch
+tmp/
+
+# deploys
+.vercel/
+
+# OS
+.DS_Store
+
+# local-only docs (spec of record, not published)
 architecture.md
 PLAN.md
