@@ -5,15 +5,16 @@ import { query } from '../db.js';
 
 const PASSWORD_MIN = 6;
 
+// emails are compared case-insensitively everywhere — normalize at the boundary
 const registerSchema = z.object({
-  email: z.email(),
+  email: z.email().toLowerCase(),
   password: z.string().min(PASSWORD_MIN),
   name: z.string().min(3),
 });
 
 
 const verifySchema = z.object({
-  email: z.email(),
+  email: z.email().toLowerCase(),
   password: z.string().min(1),
 });
 

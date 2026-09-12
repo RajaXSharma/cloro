@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api/client';
 
 interface Collaborator {
@@ -21,16 +21,17 @@ export function ShareDialog({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // fresh list every time the dialog opens
-  function open() {
-    dialogRef.current?.showModal();
-    setError(null);
+  const load = useCallback(() => {
     api(`/documents/${docId}/collaborators`)
       .then((r) => (r.ok ? r.json() : []))
       .then(setCollabs);
-  }
+  }, [docId]);
 
-  async function invite(e: React.FormEvent) {
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function invite(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!email.trim() || busy) return;
     setBusy(true);
@@ -44,8 +45,7 @@ export function ShareDialog({
       setError(error);
     } else {
       setEmail('');
-      const list = await api(`/documents/${docId}/collaborators`);
-      setCollabs(await list.json());
+      load();
     }
     setBusy(false);
   }

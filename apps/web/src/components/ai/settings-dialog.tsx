@@ -25,7 +25,7 @@ export function SettingsDialog({
       });
   }, []);
 
-  async function save(e: React.FormEvent) {
+  async function save(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const body: Record<string, string> = {};
     if (apiKey.trim()) body.api_key = apiKey.trim();

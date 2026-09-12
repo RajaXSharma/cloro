@@ -75,6 +75,7 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
 
   async function apply(instruction: string) {
     push({ role: 'user', content: `[apply] ${instruction}` });
+    push({ role: 'assistant', content: '' });
     setBusy(true);
     try {
       const res = await api('/ai/apply', {
@@ -83,7 +84,7 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
       });
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: 'AI request failed — try again.' }));
-        push({ role: 'assistant', content: error });
+        appendLast(error);
         return;
       }
       const { edits } = (await res.json()) as { edits: EditOp[] };
@@ -91,10 +92,10 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
       try {
         const valid = validateEdits(yText.toString(), edits);
         yDoc.transact(() => applyEdits(yText, valid), 'ai-apply');
-        push({ role: 'assistant', content: `Applied ${valid.length} edit(s) — Ctrl+Z reverts them.` });
+        appendLast(`Applied ${valid.length} edit(s).`);
       } catch (e) {
         if (e instanceof DocumentChangedError)
-          push({ role: 'assistant', content: 'Document changed since the AI saw it — ask again.' });
+          appendLast('Document changed since the AI saw it — ask again.');
         else throw e;
       }
     } finally {
@@ -102,7 +103,7 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
     }
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
@@ -139,7 +140,9 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
                 : 'self-start rounded-lg bg-muted px-2 py-1 whitespace-pre-wrap'
             }
           >
-            {m.content}
+            {m.content || (
+              <span className="animate-pulse text-muted-foreground">Thinking…</span>
+            )}
           </li>
         ))}
       </ul>

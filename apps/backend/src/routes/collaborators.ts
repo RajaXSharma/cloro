@@ -4,7 +4,7 @@ import { query } from "../db.js";
 
 export const collaboratorsRouter = Router({ mergeParams: true });
 
-const inviteSchema = z.object({ email: z.email() });
+const inviteSchema = z.object({ email: z.email().toLowerCase() });
 
 type DocReq = Request<{ id: string }>;
 
@@ -42,7 +42,7 @@ collaboratorsRouter.post("/", async (req: DocReq, res) => {
 
   const { rows: users } = await query(
     "select id from users where email = $1",
-    [parsed.data.email.toLowerCase()],
+    [parsed.data.email],
   );
   if (!users[0]) return res.status(404).json({ error: "no user with that email" });
 

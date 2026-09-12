@@ -11,15 +11,20 @@ export async function fetchToken(): Promise<string> {
 export async function api(path: string, init: RequestInit = {}): Promise<Response> {
   let token = cachedToken ?? (await fetchToken());
 
-  const doFetch = (t: string) =>
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`, {
+  const doFetch = (t: string) => {
+    // one Headers object: setting the same header twice in a plain object merges
+    // the values ("application/json, application/json") and the backend stops
+    // parsing the body. ponytail: single case-insensitive setter below.
+    const headers = new Headers(init.headers);
+    if (init.body && !headers.has('content-type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    headers.set('Authorization', `Bearer ${t}`);
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`, {
       ...init,
-      headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : null),
-        ...init.headers,
-        Authorization: `Bearer ${t}`,
-      },
+      headers,
     });
+  };
 
   let res = await doFetch(token);
   if (res.status === 401) {

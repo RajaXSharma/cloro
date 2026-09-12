@@ -9,6 +9,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   trustHost: true,
   pages: { signIn: '/login' },
+  callbacks: {
+    authorized: ({ auth }) => !!auth,
+  },
   providers: [
     GitHub,
     Credentials({

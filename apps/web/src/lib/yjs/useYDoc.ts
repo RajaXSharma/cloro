@@ -53,10 +53,9 @@ export function useYDoc(id: string) {
     setProvider(provider);
 
     return () => {
-      undoManager.destroy();
       provider.destroy();
     };
-  }, [id, yDoc, undoManager]);
+  }, [id, yDoc]);
 
   useEffect(() => {
     if (provider && user) provider.awareness?.setLocalStateField('user', user);
