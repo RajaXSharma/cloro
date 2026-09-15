@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import { requireAuth } from './auth.js';
 import { authRouter } from './routes/auth.js';
 import { documentsRouter } from './routes/documents.js';
+import { filesRouter, projectsRouter } from './routes/projects.js';
 import { aiRouter } from './routes/ai.js';
 
 export function createApp() {
@@ -18,6 +19,8 @@ export function createApp() {
 
   // everything below requires a valid Bearer token
   app.use(requireAuth);
+  app.use('/projects', projectsRouter);
+  app.use('/files', filesRouter);
   app.use('/documents', documentsRouter);
   app.use('/ai', aiRouter);
 

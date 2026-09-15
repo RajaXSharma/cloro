@@ -8,9 +8,9 @@ const MAX_CHARS = 30_000;
 // the debounced DB write), stored yjs_state as fallback when nobody is connected.
 export async function getDocText(
   docId: string,
-): Promise<{ name: string; text: string } | null> {
+): Promise<{ path: string; text: string } | null> {
   const { rows } = await query(
-    "select name, yjs_state from documents where id = $1",
+    "select path, yjs_state from files where id = $1",
     [docId],
   );
   if (!rows[0]) return null;
@@ -27,5 +27,5 @@ export async function getDocText(
   let text = doc.getText("content").toString();
   if (text.length > MAX_CHARS)
     text = text.slice(0, MAX_CHARS) + "\n\n[document truncated at 30,000 characters]";
-  return { name: rows[0].name, text };
+  return { path: rows[0].path, text };
 }

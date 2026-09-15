@@ -3,7 +3,7 @@ import { Router, type Request } from "express";
 type DocReq = Request<{ id: string }>;
 type RestoreReq = Request<{ id: string; sid: string }>;
 import * as Y from "yjs";
-import { isMember, query } from "../db.js";
+import { isFileMember, query } from "../db.js";
 import { hocuspocus } from "../collab.js";
 
 export const snapshotsRouter = Router({ mergeParams: true });
@@ -17,10 +17,10 @@ function currentState(docId: string): Uint8Array | null {
 
 // list snapshots
 snapshotsRouter.get("/", async (req: DocReq, res) => {
-  if (!(await isMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
+  if (!(await isFileMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
   const { rows } = await query(
-    `select id, label, created_at from doc_snapshots
-     where document_id = $1 order by created_at desc`,
+    `select id, label, created_at from file_snapshots
+     where file_id = $1 order by created_at desc`,
     [req.params.id],
   );
   res.json(rows);
@@ -28,14 +28,14 @@ snapshotsRouter.get("/", async (req: DocReq, res) => {
 
 // create snapshot of the current live state
 snapshotsRouter.post("/", async (req: DocReq, res) => {
-  if (!(await isMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
+  if (!(await isFileMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
 
   const state = currentState(req.params.id);
   if (!state) return res.status(409).json({ error: "document never opened, nothing to snapshot" });
 
   const label = typeof req.body?.label === "string" ? req.body.label : null;
   const { rows } = await query(
-    `insert into doc_snapshots (document_id, state, label, created_by)
+    `insert into file_snapshots (file_id, state, label, created_by)
      values ($1, $2, $3, $4) returning id, label, created_at`,
     [req.params.id, Buffer.from(state), label, req.user!.id],
   );
@@ -45,10 +45,10 @@ snapshotsRouter.post("/", async (req: DocReq, res) => {
 // restore: replace live content with snapshot content (an ordinary edit —
 // every connected peer receives it and the debounced persistence saves it)
 snapshotsRouter.post("/:sid/restore", async (req: RestoreReq, res) => {
-  if (!(await isMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
+  if (!(await isFileMember(req.params.id, req.user!.id))) return res.status(403).json({ error: "forbidden" });
 
   const { rows } = await query(
-    "select state from doc_snapshots where id = $1 and document_id = $2",
+    "select state from file_snapshots where id = $1 and file_id = $2",
     [req.params.sid, req.params.id],
   );
   if (!rows[0]) return res.status(404).json({ error: "snapshot not found" });
@@ -70,7 +70,7 @@ snapshotsRouter.post("/:sid/restore", async (req: RestoreReq, res) => {
   } else {
     // nobody connected: revert the stored state directly
     await query(
-      "update documents set yjs_state = $1, updated_at = now() where id = $2",
+      "update files set yjs_state = $1, updated_at = now() where id = $2",
       [Buffer.from(snapState), req.params.id],
     );
   }

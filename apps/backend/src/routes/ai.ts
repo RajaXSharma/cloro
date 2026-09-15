@@ -3,7 +3,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { getDocText } from "../ai/docContext.js";
 import { chatSystem, applySystem } from "../ai/prompts.js";
-import { isMember, query } from "../db.js";
+import { isFileMember, query } from "../db.js";
 import { EditOpsSchema } from "shared";
 
 export const aiRouter = Router();
@@ -57,7 +57,7 @@ aiRouter.post("/chat", async (req, res) => {
   });
   const parsed = chatSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid fields" });
-  if (!(await isMember(parsed.data.documentId, req.user!.id)))
+  if (!(await isFileMember(parsed.data.documentId, req.user!.id)))
     return res.status(403).json({ error: "forbidden" });
 
   const cfg = await getAiConfig(req.user!.id);
@@ -78,7 +78,7 @@ aiRouter.post("/chat", async (req, res) => {
       model: cfg.model,
       stream: true,
       messages: [
-        { role: "system", content: chatSystem(doc.name, doc.text) },
+        { role: "system", content: chatSystem(doc.path, doc.text) },
         { role: "user", content: parsed.data.question },
       ],
     });
@@ -101,7 +101,7 @@ aiRouter.post("/apply", async (req, res) => {
   });
   const parsed = applySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid fields" });
-  if (!(await isMember(parsed.data.documentId, req.user!.id)))
+  if (!(await isFileMember(parsed.data.documentId, req.user!.id)))
     return res.status(403).json({ error: "forbidden" });
 
   const cfg = await getAiConfig(req.user!.id);
@@ -117,7 +117,7 @@ aiRouter.post("/apply", async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: cfg.model,
       messages: [
-        { role: "system", content: applySystem(doc.name, doc.text, parsed.data.instruction) },
+        { role: "system", content: applySystem(doc.path, doc.text, parsed.data.instruction) },
       ],
       response_format: {
         type: "json_schema",
