@@ -9,6 +9,7 @@ export type Doc = {
   id: string;
   name: string;
   language: string;
+  project_id: string;
   owner_id: string;
   is_owner: boolean;
   created_at: string;

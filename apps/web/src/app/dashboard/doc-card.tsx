@@ -23,6 +23,13 @@ export function DocCard({ doc, onDeleted }: { doc: Doc; onDeleted: () => void })
           {doc.language} · updated {new Date(doc.updated_at).toLocaleString()}
         </p>
       </a>
+      {/* bridge until U6 lists projects directly: a legacy doc is a one-file project */}
+      <a
+        href={`/project/${doc.project_id}`}
+        className="ml-4 shrink-0 text-xs text-gray-500 hover:underline"
+      >
+        Files
+      </a>
       {doc.is_owner && (
         <button
           onClick={handleDelete}

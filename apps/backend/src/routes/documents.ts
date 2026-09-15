@@ -47,7 +47,7 @@ async function requireOwner(id: string, userId: string, res: Response) {
 
 documentsRouter.get("/", async (req, res) => {
   const { rows } = await query(
-    `select f.id, f.path as name, f.language, p.owner_id,
+    `select f.id, f.path as name, f.language, f.project_id, p.owner_id,
        (p.owner_id = $1) as is_owner, f.created_at, f.updated_at
      from files f join projects p on p.id = f.project_id
      where p.owner_id = $1
@@ -91,7 +91,7 @@ documentsRouter.get("/:id", async (req, res) => {
   if (!(await isFileMember(req.params.id, req.user!.id)))
     return res.status(403).json({ error: "forbidden" });
   const { rows } = await query(
-    `select f.id, f.path as name, f.language, p.owner_id,
+    `select f.id, f.path as name, f.language, f.project_id, p.owner_id,
        (p.owner_id = $2) as is_owner, f.created_at, f.updated_at
      from files f join projects p on p.id = f.project_id
      where f.id = $1`,
