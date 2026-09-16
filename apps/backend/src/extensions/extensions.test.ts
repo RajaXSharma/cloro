@@ -73,11 +73,19 @@ describe('ws auth', () => {
 });
 
 describe('persistence', () => {
-  it('never touches the DB for roster docs', async () => {
-    const doc = new Y.Doc();
-    expect(await persistence.onLoadDocument!({ documentName: 'roster:p1' } as never)).toBeUndefined();
-    await persistence.onStoreDocument!({ documentName: 'roster:p1', document: doc } as never);
-    expect(queryMock).not.toHaveBeenCalled();
+  it('seeds the roster map from the DB but never stores it back', async () => {
+    queryMock.mockResolvedValue({ rows: [{ id: 'f1', path: 'src/a.ts' }] } as never);
+    const loaded = (await persistence.onLoadDocument!({
+      documentName: 'roster:p1',
+    } as never)) as Y.Doc;
+    expect(loaded.getMap<string>('files').get('f1')).toBe('src/a.ts');
+    expect(queryMock).toHaveBeenCalledTimes(1);
+
+    await persistence.onStoreDocument!({
+      documentName: 'roster:p1',
+      document: loaded,
+    } as never);
+    expect(queryMock).toHaveBeenCalledTimes(1);
   });
 
   it('loads and stores file docs', async () => {

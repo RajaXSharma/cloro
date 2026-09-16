@@ -2,12 +2,22 @@ import type { Extension } from '@hocuspocus/server';
 import * as Y from 'yjs';
 import { query } from '../db.js';
 
-// roster docs are transport-only: nothing is ever read from or written to Postgres
+
 const isRoster = (name: string) => name.startsWith('roster:');
 
 export const persistence: Extension = {
   async onLoadDocument({ documentName }) {
-    if (isRoster(documentName)) return undefined;
+    if (isRoster(documentName)) {
+      const doc = new Y.Doc();
+      const { rows } = await query('SELECT id, path FROM files WHERE project_id = $1', [
+        documentName.slice('roster:'.length),
+      ]);
+      const files = doc.getMap<string>('files');
+      doc.transact(() => {
+        for (const row of rows) files.set(row.id as string, row.path as string);
+      });
+      return doc;
+    }
 
     const { rows } = await query(
       'SELECT yjs_state FROM files WHERE id = $1',

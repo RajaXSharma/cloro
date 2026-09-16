@@ -1,20 +1,72 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
+import { FileTabs } from '@/components/files/FileTabs';
+import { Editor } from '@/components/editor/Editor';
+import { CursorStyles, ProjectRoster, useAwareness } from '@/components/editor/presence';
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { project, files, loading, error, refresh } = useProjectSession(id);
+  const [openIds, setOpenIds] = useState<string[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const { project, files, loading, error, refresh, status, rosterStatus, rosterAwareness, open, close, getSession } =
+    useProjectSession(id, activeId);
+
+  const rosterStates = useAwareness(rosterAwareness);
+  const peers = rosterStates.filter((s) => s.clientID !== rosterAwareness?.clientID);
+
+  const openTab = useCallback(
+    (fileId: string) => {
+      open(fileId);
+      setOpenIds((prev) => (prev.includes(fileId) ? prev : [...prev, fileId]));
+      setActiveId(fileId);
+    },
+    [open],
+  );
+
+  const closeTab = useCallback(
+    (fileId: string) => {
+      close(fileId);
+      const next = openIds.filter((x) => x !== fileId);
+      setOpenIds(next);
+      if (activeId === fileId) setActiveId(next[next.length - 1] ?? null);
+    },
+    [close, openIds, activeId],
+  );
+
+  /** Tree mutations land here: close tabs for files the server just deleted. */
+  const onFilesChange = useCallback(
+    (deletedIds?: string[]) => {
+      const gone = (deletedIds ?? []).filter((fileId) => openIds.includes(fileId));
+      for (const fileId of gone) close(fileId);
+      if (gone.length) {
+        const next = openIds.filter((fileId) => !gone.includes(fileId));
+        setOpenIds(next);
+        if (activeId && gone.includes(activeId)) setActiveId(next[next.length - 1] ?? null);
+      }
+      void refresh();
+    },
+    [openIds, activeId, close, refresh],
+  );
 
   useEffect(() => {
     if (error) router.replace('/dashboard');
   }, [error, router]);
 
+  // the first file auto-opens once the list arrives
+  useEffect(() => {
+    if (activeId || openIds.length || files.length === 0) return;
+    openTab(files[0].id);
+  }, [files, activeId, openIds.length, openTab]);
+
   if (loading || !project) return <p className="p-8 text-sm text-muted-foreground">Loading…</p>;
+
+  const session = activeId ? getSession(activeId) : null;
+  const activeFile = files.find((f) => f.id === activeId) ?? null;
 
   return (
     <div className="flex h-screen flex-col">
@@ -24,14 +76,46 @@ export default function ProjectPage() {
         </a>
         <h1 className="text-sm font-medium">{project.name}</h1>
         <span className="text-xs text-muted-foreground">{files.length} files</span>
+        <div className="ml-auto">
+          <ProjectRoster states={rosterStates} files={files} />
+        </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 shrink-0 overflow-hidden border-r">
-          <FileTree projectId={id} files={files} onChange={refresh} />
+          <FileTree projectId={id} files={files} onChange={onFilesChange} />
         </aside>
-        {/* U4 mounts tabs + Monaco here; U3 is the tree and its REST ops only */}
-        <main className="grid flex-1 place-items-center text-sm text-muted-foreground">
-          Select a file…
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <FileTabs
+            files={files}
+            openIds={openIds}
+            activeId={activeId}
+            peers={peers}
+            onSelect={setActiveId}
+            onClose={closeTab}
+          />
+          {(status === 'disconnected' || rosterStatus === 'disconnected') && (
+            <div className="shrink-0 bg-red-600 px-4 py-1.5 text-center text-xs text-white">
+              Connection lost — reconnecting…
+            </div>
+          )}
+          {session ? (
+            <>
+              <CursorStyles awareness={session.provider.awareness ?? null} />
+              <div className="min-h-0 flex-1">
+                <Editor
+                  key={activeId}
+                  yDoc={session.yDoc}
+                  provider={session.provider}
+                  undoManager={session.undoManager}
+                  language={activeFile?.language ?? 'plaintext'}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="grid flex-1 place-items-center text-sm text-muted-foreground">
+              Select a file…
+            </div>
+          )}
         </main>
       </div>
     </div>

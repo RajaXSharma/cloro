@@ -13,7 +13,8 @@ import {
 interface Props {
   projectId: string;
   files: ProjectFile[];
-  onChange: () => void;
+  /** Receives the deleted file ids so the page can close their tabs. */
+  onChange: (deletedIds?: string[]) => void;
 }
 
 /**
@@ -32,8 +33,8 @@ export function FileTree({ projectId, files, onChange }: Props) {
   async function run(op: () => Promise<unknown>) {
     setError('');
     try {
-      await op();
-      onChange();
+      const result = await op();
+      onChange((result as { deleted?: string[] } | null)?.deleted);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed');
