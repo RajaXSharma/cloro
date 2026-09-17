@@ -5,7 +5,6 @@ import { api } from '@/lib/api/client';
 
 export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
-  const [path, setPath] = useState('index.ts');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -13,10 +12,10 @@ export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     setBusy(true);
     setError('');
-    // a project with no file would open on an empty tree — seed the first one here
+    // files are added inside the project (FileTree), so a new project starts empty
     const res = await api('/projects', {
       method: 'POST',
-      body: JSON.stringify({ name, files: [{ path }] }),
+      body: JSON.stringify({ name }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -24,7 +23,6 @@ export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
       return;
     }
     setName('');
-    setPath('index.ts');
     onCreated();
   }
 
@@ -36,13 +34,6 @@ export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="min-w-48 flex-1 rounded border px-3 py-2 text-sm"
-      />
-      <input
-        required
-        placeholder="first file (e.g. src/index.ts)"
-        value={path}
-        onChange={(e) => setPath(e.target.value)}
-        className="min-w-40 flex-1 rounded border px-3 py-2 text-sm"
       />
       <button
         type="submit"
