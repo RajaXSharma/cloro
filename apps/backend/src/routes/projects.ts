@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { PathSchema, extToLanguage } from "shared";
-import { isProjectMember, pool, query } from "../db.js";
+import { isProjectMember, pool, projectOwner, query, isUuid } from "../db.js";
 
 type PidReq = Request<{ pid: string }>;
 type FidReq = Request<{ fid: string }>;
@@ -29,6 +29,10 @@ async function requireMember(projectId: string, userId: string, res: Response) {
 // shared by PATCH/DELETE /files/:fid — resolves the file and checks membership,
 // writing the error response itself and returning null when it refuses
 async function fileForMember(fid: string, userId: string, res: Response) {
+  if (!isUuid(fid)) {
+    res.status(404).json({ error: "file not found" });
+    return null;
+  }
   const { rows } = await query("select project_id, path from files where id = $1", [fid]);
   if (!rows[0]) {
     res.status(404).json({ error: "file not found" });
@@ -126,10 +130,8 @@ projectsRouter.patch("/:pid", async (req: PidReq, res) => {
   const parsed = renameProjectSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid fields" });
 
-  const { rows: owned } = await query("select owner_id from projects where id = $1", [
-    req.params.pid,
-  ]);
-  if (!owned[0] || owned[0].owner_id !== req.user!.id)
+  const ownerId = await projectOwner(req.params.pid);
+  if (ownerId !== req.user!.id)
     return res.status(403).json({ error: "forbidden" });
 
   const { rows } = await query(
@@ -140,10 +142,8 @@ projectsRouter.patch("/:pid", async (req: PidReq, res) => {
 });
 
 projectsRouter.delete("/:pid", async (req: PidReq, res) => {
-  const { rows } = await query("select owner_id from projects where id = $1", [
-    req.params.pid,
-  ]);
-  if (!rows[0] || rows[0].owner_id !== req.user!.id)
+  const ownerId = await projectOwner(req.params.pid);
+  if (ownerId !== req.user!.id)
     return res.status(403).json({ error: "forbidden" });
 
   await query("delete from projects where id = $1", [req.params.pid]);

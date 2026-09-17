@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
+import { projectOwner, query, isUuid } from "../db.js";
 
 // mounted at /projects/:pid/collaborators — mergeParams supplies :pid.
 // Owner-only: inviting people to a project is not an editor's call.
@@ -11,14 +11,12 @@ const inviteSchema = z.object({ email: z.email().toLowerCase() });
 type PidReq = Request<{ pid: string }>;
 
 async function requireOwner(req: PidReq, res: Response) {
-  const { rows } = await query("select owner_id from projects where id = $1", [
-    req.params.pid,
-  ]);
-  if (!rows[0]) {
+  const ownerId = await projectOwner(req.params.pid);
+  if (ownerId === null) {
     res.status(404).json({ error: "project not found" });
     return null;
   }
-  if (rows[0].owner_id !== req.user!.id) {
+  if (ownerId !== req.user!.id) {
     res.status(403).json({ error: "forbidden" });
     return null;
   }
@@ -60,6 +58,8 @@ collaboratorsRouter.post("/", async (req: PidReq, res) => {
 collaboratorsRouter.delete("/:cid", async (req: Request<{ pid: string; cid: string }>, res) => {
   const projectId = await requireOwner(req, res);
   if (!projectId) return;
+  if (!isUuid(req.params.cid))
+    return res.status(404).json({ error: "collaborator not found" });
   const { rowCount } = await query(
     "delete from project_collaborators where id = $1 and project_id = $2",
     [req.params.cid, projectId],

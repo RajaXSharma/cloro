@@ -3,7 +3,7 @@ import { Router, type Request } from "express";
 type FileReq = Request<{ fid: string }>;
 type RestoreReq = Request<{ fid: string; sid: string }>;
 import * as Y from "yjs";
-import { isFileMember, query } from "../db.js";
+import { isFileMember, query, isUuid } from "../db.js";
 import { hocuspocus } from "../collab.js";
 
 // mounted at /files/:fid/snapshots — mergeParams supplies :fid
@@ -47,6 +47,7 @@ snapshotsRouter.post("/", async (req: FileReq, res) => {
 // every connected peer receives it and the debounced persistence saves it)
 snapshotsRouter.post("/:sid/restore", async (req: RestoreReq, res) => {
   if (!(await isFileMember(req.params.fid, req.user!.id))) return res.status(403).json({ error: "forbidden" });
+  if (!isUuid(req.params.sid)) return res.status(404).json({ error: "snapshot not found" });
 
   const { rows } = await query(
     "select state from file_snapshots where id = $1 and file_id = $2",
