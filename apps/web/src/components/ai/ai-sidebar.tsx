@@ -134,6 +134,15 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
     await apply(text);
   }
 
+  function sendOnEnter(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput('');
+    void ask(text);
+  }
+
   return (
     <div className="flex h-full flex-col text-sm">
       <span className="flex items-center justify-between border-b px-3 py-2 font-medium">
@@ -168,6 +177,7 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask a question or describe an edit…"
           rows={2}
+          onKeyDown={sendOnEnter}
           className="resize-none rounded-md border bg-background px-2 py-1"
         />
         <div className="flex justify-end gap-2">

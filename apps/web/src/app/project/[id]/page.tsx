@@ -6,6 +6,7 @@ import { api } from '@/lib/api/client';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
 import { FileTabs } from '@/components/files/FileTabs';
+import { QuickOpen } from '@/components/files/quick-open';
 import { Editor } from '@/components/editor/Editor';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { VersionPanel } from '@/components/editor/version-panel';
@@ -97,7 +98,13 @@ export default function ProjectPage() {
       </header>
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 shrink-0 overflow-hidden border-r">
-          <FileTree projectId={id} files={files} onOpen={openTab} onChange={onFilesChange} />
+          <FileTree
+            projectId={id}
+            files={files}
+            activeId={activeId}
+            onOpen={openTab}
+            onChange={onFilesChange}
+          />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <FileTabs
@@ -150,6 +157,7 @@ export default function ProjectPage() {
           )}
         </aside>
       </div>
+      <QuickOpen files={files} onOpen={openTab} />
       <ShareDialog projectId={id} dialogRef={shareRef} />
     </div>
   );

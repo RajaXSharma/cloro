@@ -24,7 +24,7 @@ export function ProjectList() {
 
   return (
     <div className="space-y-6">
-      <NewProjectForm onCreated={refresh} />
+      <NewProjectForm />
       {projects.length === 0 ? (
         <p className="text-sm text-gray-500">No projects yet — create your first one above.</p>
       ) : (

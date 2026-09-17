@@ -24,15 +24,25 @@ export function VersionPanel({ fileId }: { fileId: string }) {
   }, [refresh]);
 
   async function save() {
+    const label = prompt('Name this version (optional)');
+    if (label === null) return; // cancelled
     setBusy(true);
-    await api(`/files/${fileId}/snapshots`, { method: 'POST' });
+    await api(`/files/${fileId}/snapshots`, {
+      method: 'POST',
+      body: JSON.stringify({ label: label.trim() || null }),
+    });
     refresh();
     setBusy(false);
   }
 
-  async function restore(sid: string) {
+  async function restore(s: Snapshot) {
+    if (!confirm(`Restore "${s.label ?? 'manual'}"? The current content is saved first.`)) return;
     setBusy(true);
-    await api(`/files/${fileId}/snapshots/${sid}/restore`, { method: 'POST' });
+    await api(`/files/${fileId}/snapshots`, {
+      method: 'POST',
+      body: JSON.stringify({ label: 'auto before restore' }),
+    });
+    await api(`/files/${fileId}/snapshots/${s.id}/restore`, { method: 'POST' });
     refresh();
     setBusy(false);
   }
@@ -59,7 +69,7 @@ export function VersionPanel({ fileId }: { fileId: string }) {
               {s.label ?? 'manual'} · {new Date(s.created_at).toLocaleTimeString()}
             </span>
             <button
-              onClick={() => restore(s.id)}
+              onClick={() => restore(s)}
               disabled={busy}
               className="shrink-0 text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
             >

@@ -26,3 +26,4 @@ apps/web/next-env.d.ts
 # local-only docs (spec of record, not published)
 architecture.md
 PLAN.md
+CONTEXT.md

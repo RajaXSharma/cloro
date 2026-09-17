@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api/client';
+import type { Project } from '@/lib/api/projects';
 
-export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
+export function NewProjectForm() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,7 +26,9 @@ export function NewProjectForm({ onCreated }: { onCreated: () => void }) {
       return;
     }
     setName('');
-    onCreated();
+    // straight into the new project — that is where files get added
+    const project = (await res.json()) as Project;
+    router.push(`/project/${project.id}`);
   }
 
   return (
