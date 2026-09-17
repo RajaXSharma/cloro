@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Awareness } from 'y-protocols/awareness';
-import type { CollabUser } from '@/lib/yjs/useYDoc';
+import type { CollabUser } from '@/lib/yjs/useProjectSession';
 
 export type AwarenessState = { clientID: number; user?: CollabUser; openFile?: string | null };
 
@@ -23,25 +23,6 @@ export function useAwareness(awareness: Awareness | null): AwarenessState[] {
     };
   }, [awareness]);
   return states;
-}
-
-export function UserList({ awareness }: { awareness: Awareness | null }) {
-  const states = useAwareness(awareness);
-  if (states.length === 0) return null;
-  return (
-    <div className="flex items-center -space-x-1">
-      {states.map(({ clientID, user }) => (
-        <span
-          key={clientID}
-          title={user?.name}
-          className="grid size-6 place-items-center rounded-full text-[10px] font-medium text-white"
-          style={{ backgroundColor: user?.color }}
-        >
-          {user?.name.slice(0, 1).toUpperCase()}
-        </span>
-      ))}
-    </div>
-  );
 }
 
 export function ProjectRoster({

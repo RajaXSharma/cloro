@@ -13,6 +13,8 @@ import {
 interface Props {
   projectId: string;
   files: ProjectFile[];
+  /** Clicking a file name opens it as a tab. */
+  onOpen: (fileId: string) => void;
   /** Receives the deleted file ids so the page can close their tabs. */
   onChange: (deletedIds?: string[]) => void;
 }
@@ -22,7 +24,7 @@ interface Props {
  * prefixes, never rows: nesting comes from typing `src/lib/x.ts`, a "folder
  * delete" is a prefix delete, and there is no empty-folder state to render.
  */
-export function FileTree({ projectId, files, onChange }: Props) {
+export function FileTree({ projectId, files, onOpen, onChange }: Props) {
   const [creating, setCreating] = useState(false);
   const [newPath, setNewPath] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -64,7 +66,9 @@ export function FileTree({ projectId, files, onChange }: Props) {
               />
             ) : (
               <>
-                <span className="truncate">{node.name}</span>
+                <button onClick={() => onOpen(node.id)} className="truncate text-left hover:underline">
+                  {node.name}
+                </button>
                 <button
                   onClick={() => {
                     setRenamingId(node.id);

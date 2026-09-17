@@ -10,7 +10,10 @@ const createSchema = z.object({
   name: z.string().min(1),
   files: z.array(z.object({ path: PathSchema })).optional(),
 });
-const renameSchema = z.object({ path: PathSchema });
+const updateFileSchema = z.object({
+  path: PathSchema.optional(),
+  language: z.string().min(1).optional(),
+});
 const createFileSchema = z.object({
   path: PathSchema,
   language: z.string().min(1).optional(),
@@ -195,15 +198,18 @@ projectFilesRouter.delete("/", async (req: PidReq, res) => {
 export const filesRouter = Router();
 
 filesRouter.patch("/:fid", async (req: FidReq, res) => {
-  const parsed = renameSchema.safeParse(req.body);
+  const parsed = updateFileSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid fields" });
   if (!(await fileForMember(req.params.fid, req.user!.id, res))) return;
 
+  const { path: filePath, language } = parsed.data;
   try {
     const { rows } = await query(
-      `update files set path = $1, updated_at = now() where id = $2
+      `update files
+       set path = coalesce($1, path), language = coalesce($2, language), updated_at = now()
+       where id = $3
        returning id, path, language, updated_at`,
-      [parsed.data.path, req.params.fid],
+      [filePath ?? null, language ?? null, req.params.fid],
     );
     res.json(rows[0]);
   } catch (err) {

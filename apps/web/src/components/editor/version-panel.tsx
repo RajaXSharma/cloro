@@ -9,15 +9,15 @@ interface Snapshot {
   created_at: string;
 }
 
-export function VersionPanel({ docId }: { docId: string }) {
+export function VersionPanel({ fileId }: { fileId: string }) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => {
-    api(`/documents/${docId}/snapshots`)
+    api(`/files/${fileId}/snapshots`)
       .then((r) => (r.ok ? r.json() : []))
       .then(setSnapshots);
-  }, [docId]);
+  }, [fileId]);
 
   useEffect(() => {
     refresh();
@@ -25,14 +25,14 @@ export function VersionPanel({ docId }: { docId: string }) {
 
   async function save() {
     setBusy(true);
-    await api(`/documents/${docId}/snapshots`, { method: 'POST' });
+    await api(`/files/${fileId}/snapshots`, { method: 'POST' });
     refresh();
     setBusy(false);
   }
 
   async function restore(sid: string) {
     setBusy(true);
-    await api(`/documents/${docId}/snapshots/${sid}/restore`, { method: 'POST' });
+    await api(`/files/${fileId}/snapshots/${sid}/restore`, { method: 'POST' });
     refresh();
     setBusy(false);
   }

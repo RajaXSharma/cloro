@@ -7,9 +7,21 @@ import type { Awareness } from 'y-protocols/awareness';
 import { extToLanguage } from 'shared';
 import { fetchToken } from '@/lib/api/client';
 import { getProject, listFiles, type Project, type ProjectFile } from '@/lib/api/projects';
-import { hashColor, type CollabStatus, type CollabUser } from '@/lib/yjs/useYDoc';
 
 const WS_URL = process.env.NEXT_PUBLIC_HOCUSPUS_URL ?? 'ws://localhost:1234';
+
+// collab primitives live here now that useYDoc.ts (the single-file bridge) is gone
+export type CollabStatus = 'connecting' | 'connected' | 'disconnected';
+
+export interface CollabUser {
+  name: string;
+  color: string;
+}
+
+export function hashColor(seed: string): string {
+  const hue = Math.abs([...seed].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) % 360;
+  return `hsl(${hue} 70% 45%)`;
+}
 
 export interface FileSession {
   yDoc: Y.Doc;

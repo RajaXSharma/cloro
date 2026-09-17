@@ -10,10 +10,10 @@ interface Collaborator {
 }
 
 export function ShareDialog({
-  docId,
+  projectId,
   dialogRef,
 }: {
-  docId: string;
+  projectId: string;
   dialogRef: React.RefObject<HTMLDialogElement | null>;
 }) {
   const [collabs, setCollabs] = useState<Collaborator[] | null>(null);
@@ -22,10 +22,10 @@ export function ShareDialog({
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    api(`/documents/${docId}/collaborators`)
+    api(`/projects/${projectId}/collaborators`)
       .then((r) => (r.ok ? r.json() : []))
       .then(setCollabs);
-  }, [docId]);
+  }, [projectId]);
 
   useEffect(() => {
     load();
@@ -36,7 +36,7 @@ export function ShareDialog({
     if (!email.trim() || busy) return;
     setBusy(true);
     setError(null);
-    const res = await api(`/documents/${docId}/collaborators`, {
+    const res = await api(`/projects/${projectId}/collaborators`, {
       method: 'POST',
       body: JSON.stringify({ email: email.trim() }),
     });
@@ -52,7 +52,7 @@ export function ShareDialog({
 
   async function remove(id: string) {
     setBusy(true);
-    await api(`/documents/${docId}/collaborators/${id}`, { method: 'DELETE' });
+    await api(`/projects/${projectId}/collaborators/${id}`, { method: 'DELETE' });
     setCollabs((c) => c?.filter((x) => x.id !== id) ?? null);
     setBusy(false);
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type * as Y from 'yjs';
 import { api } from '@/lib/api/client';
 import { applyEdits, validateEdits, DocumentChangedError, type EditOp } from 'shared';
@@ -11,16 +11,29 @@ interface Msg {
   content: string;
 }
 
-const initial = (): Msg[] => [
-  { role: 'assistant', content: 'Ask about this document, or type an edit instruction and press Apply.' },
+const initial = (path: string): Msg[] => [
+  {
+    role: 'assistant',
+    content: `Ask about ${path}, or type an edit instruction and press Apply edits.`,
+  },
 ];
 
-export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
-  const [messages, setMessages] = useState<Msg[]>(initial);
+export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string; yDoc: Y.Doc }) {
+  const [messages, setMessages] = useState<Msg[]>(() => initial(path));
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const settingsRef = useRef<HTMLDialogElement>(null);
+  // the page mounts this with key={fileId}, so unmount == the active tab changed.
+  // Re-set on mount: StrictMode's spurious mount/cleanup/mount would otherwise
+  // leave this false forever and silently discard every apply.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   function scroll() {
     requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }));
@@ -44,7 +57,7 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
     try {
       const res = await api('/ai/chat', {
         method: 'POST',
-        body: JSON.stringify({ documentId: docId, question }),
+        body: JSON.stringify({ documentId: fileId, question }),
       });
       if (!res.ok || !res.body) {
         const { error } = await res.json().catch(() => ({ error: 'AI request failed' }));
@@ -80,7 +93,7 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
     try {
       const res = await api('/ai/apply', {
         method: 'POST',
-        body: JSON.stringify({ documentId: docId, instruction }),
+        body: JSON.stringify({ documentId: fileId, instruction }),
       });
       if (!res.ok) {
         const { error } = await res.json().catch(() => ({ error: 'AI request failed — try again.' }));
@@ -88,6 +101,9 @@ export function AiSidebar({ docId, yDoc }: { docId: string; yDoc: Y.Doc }) {
         return;
       }
       const { edits } = (await res.json()) as { edits: EditOp[] };
+      // tab switched while the model was thinking — drop the ops rather than
+      // edit a file the user is no longer looking at
+      if (!alive.current) return;
       const yText = yDoc.getText('content');
       try {
         const valid = validateEdits(yText.toString(), edits);

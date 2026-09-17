@@ -1,11 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { api } from '@/lib/api/client';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
 import { FileTabs } from '@/components/files/FileTabs';
 import { Editor } from '@/components/editor/Editor';
+import { Toolbar } from '@/components/editor/Toolbar';
+import { VersionPanel } from '@/components/editor/version-panel';
+import { ShareDialog } from '@/components/editor/share-dialog';
+import { AiSidebar } from '@/components/ai/ai-sidebar';
 import { CursorStyles, ProjectRoster, useAwareness } from '@/components/editor/presence';
 
 export default function ProjectPage() {
@@ -13,6 +18,7 @@ export default function ProjectPage() {
   const router = useRouter();
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const shareRef = useRef<HTMLDialogElement>(null);
   const { project, files, loading, error, refresh, status, rosterStatus, rosterAwareness, open, close, getSession } =
     useProjectSession(id, activeId);
 
@@ -76,13 +82,22 @@ export default function ProjectPage() {
         </a>
         <h1 className="text-sm font-medium">{project.name}</h1>
         <span className="text-xs text-muted-foreground">{files.length} files</span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
           <ProjectRoster states={rosterStates} files={files} />
+          {project.is_owner && (
+            <button
+              type="button"
+              onClick={() => shareRef.current?.showModal()}
+              className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+            >
+              Share
+            </button>
+          )}
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-64 shrink-0 overflow-hidden border-r">
-          <FileTree projectId={id} files={files} onChange={onFilesChange} />
+          <FileTree projectId={id} files={files} onOpen={openTab} onChange={onFilesChange} />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <FileTabs
@@ -98,16 +113,17 @@ export default function ProjectPage() {
               Connection lost — reconnecting…
             </div>
           )}
-          {session ? (
+          {session && activeFile ? (
             <>
               <CursorStyles awareness={session.provider.awareness ?? null} />
+              <Toolbar path={activeFile.path} status={status} />
               <div className="min-h-0 flex-1">
                 <Editor
                   key={activeId}
                   yDoc={session.yDoc}
                   provider={session.provider}
                   undoManager={session.undoManager}
-                  language={activeFile?.language ?? 'plaintext'}
+                  language={activeFile.language}
                 />
               </div>
             </>
@@ -117,7 +133,24 @@ export default function ProjectPage() {
             </div>
           )}
         </main>
+        {/* panels follow the active tab: key remounts them per file, so an
+            in-flight AI apply is dropped instead of landing in the wrong file */}
+        <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-l">
+          {session && activeFile ? (
+            <>
+              <div className="max-h-56 shrink-0 overflow-y-auto border-b">
+                <VersionPanel fileId={activeId!} />
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <AiSidebar key={activeId} fileId={activeId!} path={activeFile.path} yDoc={session.yDoc} />
+              </div>
+            </>
+          ) : (
+            <div className="p-3 text-xs text-muted-foreground">No file open.</div>
+          )}
+        </aside>
       </div>
+      <ShareDialog projectId={id} dialogRef={shareRef} />
     </div>
   );
 }

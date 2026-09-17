@@ -3,8 +3,9 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { requireAuth } from './auth.js';
 import { authRouter } from './routes/auth.js';
-import { documentsRouter } from './routes/documents.js';
 import { filesRouter, projectsRouter } from './routes/projects.js';
+import { collaboratorsRouter } from './routes/collaborators.js';
+import { snapshotsRouter } from './routes/snapshots.js';
 import { aiRouter } from './routes/ai.js';
 
 export function createApp() {
@@ -21,7 +22,9 @@ export function createApp() {
   app.use(requireAuth);
   app.use('/projects', projectsRouter);
   app.use('/files', filesRouter);
-  app.use('/documents', documentsRouter);
+  // nested resources: the whole API surface lives here, routers set mergeParams
+  app.use('/projects/:pid/collaborators', collaboratorsRouter);
+  app.use('/files/:fid/snapshots', snapshotsRouter);
   app.use('/ai', aiRouter);
 
   return app;

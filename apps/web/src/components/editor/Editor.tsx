@@ -14,13 +14,13 @@ interface Props {
   language: string;
 }
 
+const EDITOR_BG = '#1e1e1e'; // monaco vs-dark background
+
 export function Editor({ yDoc, provider, undoManager, language }: Props) {
   const bindingRef = useRef<MonacoBindingType | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const [ready, setReady] = useState(false);
-
-  useEffect(() => () => bindingRef.current?.destroy(), []);
 
   // y-monaco touches `window` at import time — load it lazily so SSR never
   // evaluates it. Effect deps handle either arrival order (provider state vs
@@ -48,8 +48,12 @@ export function Editor({ yDoc, provider, undoManager, language }: Props) {
     });
     return () => {
       cancelled = true;
-      bindingRef.current?.destroy();
+      // clear before destroy: one owner, so an extra cleanup (StrictMode, a
+      // second effect) can never destroy the same binding twice — y-monaco's
+      // destroy() is not idempotent and warns "Tried to remove event handler"
+      const binding = bindingRef.current;
       bindingRef.current = null;
+      binding?.destroy();
     };
   }, [provider, yDoc, undoManager, ready]);
 
@@ -60,10 +64,14 @@ export function Editor({ yDoc, provider, undoManager, language }: Props) {
   };
 
   return (
-    <div className="h-full">
+    // vs-dark's canvas colour. Monaco is remounted per tab (key={activeId}), so
+    // while it re-initialises this wrapper is what shows — paint it editor-dark
+    // instead of leaving the page's white visible behind it.
+    <div className="h-full" style={{ backgroundColor: EDITOR_BG }}>
       <MonacoEditor
         language={language}
         theme="vs-dark"
+        loading={null}
         options={{ fontSize: 14, minimap: { enabled: false }, automaticLayout: true }}
         onMount={onMount}
       />

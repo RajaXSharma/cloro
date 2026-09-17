@@ -1,31 +1,31 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { projectOfFile, query } from "../db.js";
+import { query } from "../db.js";
 
+// mounted at /projects/:pid/collaborators — mergeParams supplies :pid.
+// Owner-only: inviting people to a project is not an editor's call.
 export const collaboratorsRouter = Router({ mergeParams: true });
 
 const inviteSchema = z.object({ email: z.email().toLowerCase() });
 
-type DocReq = Request<{ id: string }>;
+type PidReq = Request<{ pid: string }>;
 
-// Until U6 this router is mounted under a *file* id (/documents/:fid/collaborators),
-// so resolve the file's project first. U6 mounts it at /projects/:pid instead and
-// this becomes `req.params.pid`.
-async function requireOwner(req: DocReq, res: Response) {
-  const projectId = await projectOfFile(req.params.id);
-  if (!projectId) {
+async function requireOwner(req: PidReq, res: Response) {
+  const { rows } = await query("select owner_id from projects where id = $1", [
+    req.params.pid,
+  ]);
+  if (!rows[0]) {
     res.status(404).json({ error: "project not found" });
     return null;
   }
-  const { rows } = await query("select owner_id from projects where id = $1", [projectId]);
   if (rows[0].owner_id !== req.user!.id) {
     res.status(403).json({ error: "forbidden" });
     return null;
   }
-  return projectId;
+  return req.params.pid;
 }
 
-collaboratorsRouter.get("/", async (req: DocReq, res) => {
+collaboratorsRouter.get("/", async (req: PidReq, res) => {
   const projectId = await requireOwner(req, res);
   if (!projectId) return;
   const { rows } = await query(
@@ -37,7 +37,7 @@ collaboratorsRouter.get("/", async (req: DocReq, res) => {
   res.json(rows);
 });
 
-collaboratorsRouter.post("/", async (req: DocReq, res) => {
+collaboratorsRouter.post("/", async (req: PidReq, res) => {
   const parsed = inviteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid fields" });
   const projectId = await requireOwner(req, res);
@@ -57,7 +57,7 @@ collaboratorsRouter.post("/", async (req: DocReq, res) => {
   res.status(201).json({ ok: true });
 });
 
-collaboratorsRouter.delete("/:cid", async (req: Request<{ id: string; cid: string }>, res) => {
+collaboratorsRouter.delete("/:cid", async (req: Request<{ pid: string; cid: string }>, res) => {
   const projectId = await requireOwner(req, res);
   if (!projectId) return;
   const { rowCount } = await query(
