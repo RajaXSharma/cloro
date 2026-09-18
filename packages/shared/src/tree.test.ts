@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { extToLanguage, isValidPath, parsePaths, type TreeNode } from "./tree.js";
+import {
+  extToLanguage,
+  isValidPath,
+  isValidSegment,
+  joinPath,
+  parentOf,
+  parsePaths,
+  type TreeNode,
+} from "./tree.js";
 
 // flatten to "type:path" lines so ordering assertions stay readable
 const flat = (nodes: TreeNode[]): string[] =>
@@ -23,6 +31,37 @@ describe("isValidPath", () => {
   it("rejects paths over 200 chars", () => {
     expect(isValidPath("a".repeat(201))).toBe(false);
     expect(isValidPath("a".repeat(200))).toBe(true);
+  });
+});
+
+// Folder-scoped create and name-only folder rename (ADR 003) do their prefix
+// arithmetic with these three, so they are the seam the feature is tested at.
+describe("path building", () => {
+  it("joins a name onto a folder at the root and below it", () => {
+    expect(joinPath("", "a.ts")).toBe("a.ts");
+    expect(joinPath("src", "a.ts")).toBe("src/a.ts");
+    expect(joinPath("src/lib", "a.ts")).toBe("src/lib/a.ts");
+  });
+
+  it("drops the last segment to get the parent, root for a top-level path", () => {
+    expect(parentOf("src/lib")).toBe("src");
+    expect(parentOf("src")).toBe("");
+    expect(parentOf("a.ts")).toBe("");
+  });
+
+  it("accepts a name as one path segment and rejects separators or dots", () => {
+    for (const s of ["a.ts", ".gitkeep", "a-b_c.d.ts"]) expect(isValidSegment(s)).toBe(true);
+    for (const s of ["", ".", "..", "a/b", "src/lib"]) expect(isValidSegment(s)).toBe(false);
+  });
+
+  it("survives the round trip used by create and rename", () => {
+    for (const [parent, name] of [
+      ["", "a.ts"],
+      ["src", "a.ts"],
+      ["src/lib", "deep"],
+    ]) {
+      expect(parentOf(joinPath(parent, name))).toBe(parent);
+    }
   });
 });
 

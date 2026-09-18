@@ -50,3 +50,11 @@ export const deleteFolder = (pid: string, path: string) =>
     `/projects/${pid}/files?path=${encodeURIComponent(path)}`,
     { method: 'DELETE' },
   );
+
+// same handle for rename: old prefix in the query, new prefix in the body.
+// the route returns `returning id, path` only, so it is not a full ProjectFile
+export const renameFolder = (pid: string, from: string, to: string) =>
+  req<Pick<ProjectFile, 'id' | 'path'>[]>(
+    `/projects/${pid}/files?path=${encodeURIComponent(from)}`,
+    body('PATCH', { path: to }),
+  );

@@ -193,6 +193,50 @@ projectFilesRouter.delete("/", async (req: PidReq, res) => {
   res.json({ deleted: await deleteSubtree(req.params.pid, parsed.data.path) });
 });
 
+// Renaming a *folder* row: the tree is derived, so the client has no id for it —
+// it sends the old prefix as ?path, and the new prefix as the body's `path`
+// (just like PATCH /files/:fid sends its new path). One statement rewrites the
+// prefix on every row under it, so `src/.gitkeep` travels with the folder.
+projectFilesRouter.patch("/", async (req: PidReq, res) => {
+  const from = z.object({ path: PathSchema }).safeParse(req.query);
+  const parsed = z.object({ path: PathSchema }).safeParse(req.body);
+  if (!from.success || !parsed.success) return res.status(400).json({ error: "invalid path" });
+  if (!(await requireMember(req.params.pid, req.user!.id, res))) return;
+
+  const [oldPrefix, newPrefix] = [from.data.path, parsed.data.path];
+  // Rewriting only the prefix silently *merges* when the destination exists but
+  // holds different names (src/a.ts -> lib/a.ts collides with nothing), and the
+  // unique constraint cannot see that. So the destination has to be free: reject,
+  // never merge (ADR 003). Moving a folder into its own subtree is exempt — there
+  // the destination rows are the ones being moved.
+  // ponytail: check-then-update, not atomic. Two renames onto the same free
+  // destination at once could both pass; unique (project_id, path) still catches
+  // a real path collision. Lock the project's rows if that ever bites.
+  const intoItself = newPrefix === oldPrefix || newPrefix.startsWith(`${oldPrefix}/`);
+  if (!intoItself) {
+    const { rowCount } = await query(
+      `select 1 from files where project_id = $1
+       and (path = $2 or starts_with(path, $2 || '/')) limit 1`,
+      [req.params.pid, newPrefix],
+    );
+    if (rowCount) return res.status(409).json({ error: "path already exists" });
+  }
+
+  try {
+    const { rows } = await query(
+      `update files
+       set path = $1 || substring(path from length($2) + 1), updated_at = now()
+       where project_id = $3 and (path = $2 or starts_with(path, $2 || '/'))
+       returning id, path`,
+      [newPrefix, oldPrefix, req.params.pid],
+    );
+    res.json(rows);
+  } catch (err) {
+    if (isDuplicatePath(err)) return res.status(409).json({ error: "path already exists" });
+    throw err;
+  }
+});
+
 // --- /files/:fid ------------------------------------------------------------
 
 export const filesRouter = Router();

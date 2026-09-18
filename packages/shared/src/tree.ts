@@ -3,9 +3,24 @@ import { z } from "zod";
 // Paths are a trust boundary: a '../' segment would let one project's files
 // collide with another's namespace, so they are rejected, never sanitised.
 // unique (project_id, path) in Postgres is the backstop for concurrent renames.
+// One segment is also the whole rule for a folder name (ADR 003 rename is
+// name-only) and for each part of a path, so both share this.
+export function isValidSegment(segment: string): boolean {
+  return segment.length > 0 && segment !== "." && segment !== ".." && !segment.includes("/");
+}
+
 export function isValidPath(path: string): boolean {
   if (!path || path.length > 200) return false;
-  return path.split("/").every((s) => s.length > 0 && s !== "." && s !== "..");
+  return path.split("/").every(isValidSegment);
+}
+
+// Folder-scoped create joins the clicked folder's prefix to the typed name;
+// `''` is the project root. parentOf is its inverse, for name-only renames.
+export const joinPath = (parent: string, name: string): string =>
+  parent ? `${parent}/${name}` : name;
+
+export function parentOf(path: string): string {
+  return path.slice(0, Math.max(0, path.lastIndexOf("/")));
 }
 
 export const PathSchema = z.string().min(1).max(200).refine(isValidPath, "invalid path");

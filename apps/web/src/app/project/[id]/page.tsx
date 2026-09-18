@@ -20,6 +20,7 @@ export default function ProjectPage() {
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const shareRef = useRef<HTMLDialogElement>(null);
+  const autoOpenedFor = useRef<string | null>(null);
   const { project, files, loading, error, refresh, status, rosterStatus, rosterAwareness, open, close, getSession } =
     useProjectSession(id, activeId);
 
@@ -55,7 +56,7 @@ export default function ProjectPage() {
         setOpenIds(next);
         if (activeId && gone.includes(activeId)) setActiveId(next[next.length - 1] ?? null);
       }
-      void refresh();
+      return refresh();
     },
     [openIds, activeId, close, refresh],
   );
@@ -64,11 +65,14 @@ export default function ProjectPage() {
     if (error) router.replace('/dashboard');
   }, [error, router]);
 
-  // the first file auto-opens once the list arrives
+  // the first file auto-opens once the list arrives, once per project. The guard
+  // cannot key off `openIds` alone: closing the last tab empties it, which looks
+  // identical to "nothing opened yet" and pops the tab straight back open.
   useEffect(() => {
-    if (activeId || openIds.length || files.length === 0) return;
+    if (autoOpenedFor.current === id || activeId || openIds.length || files.length === 0) return;
+    autoOpenedFor.current = id;
     openTab(files[0].id);
-  }, [files, activeId, openIds.length, openTab]);
+  }, [id, files, activeId, openIds.length, openTab]);
 
   if (loading || !project) return <p className="p-8 text-sm text-muted-foreground">Loading…</p>;
 

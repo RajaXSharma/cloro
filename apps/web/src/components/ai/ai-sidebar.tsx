@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ArrowUp } from 'lucide-react';
 import type * as Y from 'yjs';
 import { api } from '@/lib/api/client';
 import { applyEdits, validateEdits, DocumentChangedError, type EditOp } from 'shared';
@@ -14,13 +15,16 @@ interface Msg {
 const initial = (path: string): Msg[] => [
   {
     role: 'assistant',
-    content: `Ask about ${path}, or type an edit instruction and press Apply edits.`,
+    content: `Ask about ${path}, or switch to Edit to change it.`,
   },
 ];
+
+type Mode = 'ask' | 'edit';
 
 export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string; yDoc: Y.Doc }) {
   const [messages, setMessages] = useState<Msg[]>(() => initial(path));
   const [input, setInput] = useState('');
+  const [mode, setMode] = useState<Mode>('ask');
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const settingsRef = useRef<HTMLDialogElement>(null);
@@ -86,8 +90,9 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
     }
   }
 
+  // Edit mode: the same send button, routed to structured edits instead of chat
   async function apply(instruction: string) {
-    push({ role: 'user', content: `[apply] ${instruction}` });
+    push({ role: 'user', content: instruction });
     push({ role: 'assistant', content: '' });
     setBusy(true);
     try {
@@ -119,19 +124,17 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
     }
   }
 
+  /** One send button, routed by the Ask/Edit toggle beside it. */
+  function send(text: string) {
+    return mode === 'edit' ? apply(text) : ask(text);
+  }
+
   async function onSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
     setInput('');
-    await ask(text);
-  }
-
-  async function onApply() {
-    const text = input.trim();
-    if (!text || busy) return;
-    setInput('');
-    await apply(text);
+    await send(text);
   }
 
   function sendOnEnter(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -140,7 +143,7 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
     const text = input.trim();
     if (!text || busy) return;
     setInput('');
-    void ask(text);
+    void send(text);
   }
 
   return (
@@ -175,26 +178,30 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question or describe an edit…"
+          placeholder={mode === 'edit' ? 'Describe an edit…' : 'Ask a question…'}
           rows={2}
           onKeyDown={sendOnEnter}
           className="resize-none rounded-md border bg-background px-2 py-1"
         />
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onApply}
-            disabled={busy || !input.trim()}
-            className="rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+        <div className="flex items-center justify-between gap-2">
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as Mode)}
+            aria-label="AI mode"
+            title="Ask a question, or apply an edit"
+            className="rounded-md border bg-background px-1.5 py-1 text-xs text-muted-foreground"
           >
-            Apply edits
-          </button>
+            <option value="ask">Ask</option>
+            <option value="edit">Edit</option>
+          </select>
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50"
+            aria-label="Send"
+            title="Send"
+            className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground disabled:opacity-50"
           >
-            Ask
+            <ArrowUp className="size-4" />
           </button>
         </div>
       </form>
