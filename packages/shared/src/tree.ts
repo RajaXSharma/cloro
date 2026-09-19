@@ -14,6 +14,12 @@ export function isValidPath(path: string): boolean {
   return path.split("/").every(isValidSegment);
 }
 
+// `.gitkeep` is the placeholder `New Folder` writes (ADR 001): a real row that every
+// path listing hides. One predicate, so the tree, quick-open and the project export
+// cannot drift on which rows are displayable.
+export const isPlaceholder = (path: string): boolean =>
+  path.split("/").pop() === ".gitkeep";
+
 // Folder-scoped create joins the clicked folder's prefix to the typed name;
 // `''` is the project root. parentOf is its inverse, for name-only renames.
 export const joinPath = (parent: string, name: string): string =>

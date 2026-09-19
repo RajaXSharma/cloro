@@ -9,7 +9,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { isValidPath, isValidSegment, joinPath, parentOf, parsePaths, type TreeNode } from 'shared';
+import { isPlaceholder, isValidPath, isValidSegment, joinPath, parentOf, parsePaths, type TreeNode } from 'shared';
 import {
   createFile,
   deleteFile,
@@ -147,7 +147,7 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
       const pad = { paddingLeft: `${depth * 12 + 8}px` };
 
       if (node.type === 'file') {
-        if (node.name === '.gitkeep') return null; // folder placeholder, not a file
+        if (isPlaceholder(node.path)) return null; // folder placeholder, not a file
         const active = node.id === activeId;
         return (
           <div

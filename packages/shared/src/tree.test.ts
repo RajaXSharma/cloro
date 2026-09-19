@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extToLanguage,
+  isPlaceholder,
   isValidPath,
   isValidSegment,
   joinPath,
@@ -31,6 +32,20 @@ describe("isValidPath", () => {
   it("rejects paths over 200 chars", () => {
     expect(isValidPath("a".repeat(201))).toBe(false);
     expect(isValidPath("a".repeat(200))).toBe(true);
+  });
+});
+
+describe("isPlaceholder", () => {
+  it("hides the folder placeholder wherever it sits", () => {
+    expect(isPlaceholder(".gitkeep")).toBe(true);
+    expect(isPlaceholder("src/.gitkeep")).toBe(true);
+    expect(isPlaceholder("src/lib/deep/.gitkeep")).toBe(true);
+  });
+
+  it("leaves real files alone", () => {
+    for (const p of ["a.ts", "src/a.ts", "gitkeep", "a.gitkeep", "x/.gitkeep/y.ts"]) {
+      expect(isPlaceholder(p)).toBe(false);
+    }
   });
 });
 

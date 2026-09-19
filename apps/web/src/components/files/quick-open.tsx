@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { fuzzyFilter } from 'shared';
+import { fuzzyFilter, isPlaceholder } from 'shared';
 import type { ProjectFile } from '@/lib/api/projects';
 
 /** Ctrl/Cmd+P fuzzy file palette. Registers its own shortcut; renders nothing when closed. */
@@ -39,7 +39,7 @@ export function QuickOpen({
   if (!open) return null;
 
   const matches = fuzzyFilter(
-    files.filter((f) => f.path.split('/').pop() !== '.gitkeep'),
+    files.filter((f) => !isPlaceholder(f.path)),
     query,
   ).slice(0, 50);
   const choose = (id: string) => {

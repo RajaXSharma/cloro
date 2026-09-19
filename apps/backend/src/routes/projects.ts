@@ -1,7 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { PathSchema, extToLanguage } from "shared";
+import { PathSchema, extToLanguage, isPlaceholder, zipFilename } from "shared";
 import { isProjectMember, pool, projectOwner, query, isUuid } from "../db.js";
+import { getFileText } from "../files/text.js";
+import { createZip } from "../files/zip.js";
 
 type PidReq = Request<{ pid: string }>;
 type FidReq = Request<{ fid: string }>;
@@ -235,6 +237,45 @@ projectFilesRouter.patch("/", async (req: PidReq, res) => {
     if (isDuplicatePath(err)) return res.status(409).json({ error: "path already exists" });
     throw err;
   }
+});
+
+// --- /projects/:pid/export --------------------------------------------------
+//
+// The whole project as a zip: one entry per file row, paths at the archive root
+// (ADR 004). Reads are member-level, and the text is live-doc-first (files/text.ts),
+// so a file typed one second ago exports its current content, not the debounced row.
+// `.gitkeep` is a folder placeholder the tree hides (ADR 001), so it is not a file
+// here either — a folder holding only one is an empty project, and 400s like any other.
+projectsRouter.get("/:pid/export", async (req: PidReq, res) => {
+  if (!(await requireMember(req.params.pid, req.user!.id, res))) return;
+
+  // the project name rides along with the file list — one round trip, not two
+  const { rows } = await query(
+    `select f.id, f.path, p.name as project_name
+       from files f join projects p on p.id = f.project_id
+      where f.project_id = $1
+      order by f.path`,
+    [req.params.pid],
+  );
+  const files = rows.filter((r) => !isPlaceholder(r.path));
+  if (!files.length) return res.status(400).json({ error: "project has no files" });
+
+  // Each entry is named from the same read that produced its text, so a rename
+  // landing mid-export cannot pair one file's name with another's content.
+  const entries = await Promise.all(
+    files.map(async (f) => {
+      const file = await getFileText(f.id);
+      return { name: file?.path ?? f.path, text: file?.text ?? "" };
+    }),
+  );
+  const zip = await createZip(entries);
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${zipFilename(rows[0].project_name ?? "")}"`,
+  );
+  res.send(zip);
 });
 
 // --- /files/:fid ------------------------------------------------------------

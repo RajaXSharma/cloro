@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api/client';
+import { downloadProject } from '@/lib/api/projects';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
 import { FileTabs } from '@/components/files/FileTabs';
@@ -19,6 +20,8 @@ export default function ProjectPage() {
   const router = useRouter();
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
   const shareRef = useRef<HTMLDialogElement>(null);
   const autoOpenedFor = useRef<string | null>(null);
   const { project, files, loading, error, refresh, status, rosterStatus, rosterAwareness, open, close, getSession } =
@@ -79,6 +82,19 @@ export default function ProjectPage() {
   const session = activeId ? getSession(activeId) : null;
   const activeFile = files.find((f) => f.id === activeId) ?? null;
 
+  // no toast system in this app: failures land in the header line next to the button
+  async function onDownload() {
+    setDownloading(true);
+    setDownloadError('');
+    try {
+      await downloadProject(id, project!.name);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'download failed');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center gap-3 border-b px-4 py-2">
@@ -89,6 +105,15 @@ export default function ProjectPage() {
         <span className="text-xs text-muted-foreground">{files.length} files</span>
         <div className="ml-auto flex items-center gap-3">
           <ProjectRoster states={rosterStates} files={files} />
+          {downloadError && <span className="text-xs text-red-600">{downloadError}</span>}
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={downloading}
+            className="rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+          >
+            {downloading ? 'Preparing…' : 'Download .zip'}
+          </button>
           {project.is_owner && (
             <button
               type="button"
