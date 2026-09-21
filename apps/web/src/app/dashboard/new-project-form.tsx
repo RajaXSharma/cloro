@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import type { Project } from '@/lib/api/projects';
+import { Button } from '@/components/ui/button';
+import { FormError, TextField } from '@/components/ui/field';
 
 export function NewProjectForm() {
   const [name, setName] = useState('');
@@ -26,28 +29,31 @@ export function NewProjectForm() {
       return;
     }
     setName('');
-    // straight into the new project — that is where files get added
+    // straight into the new project: that is where files get added
     const project = (await res.json()) as Project;
     router.push(`/project/${project.id}`);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-      <input
-        required
-        placeholder="project name (e.g. checkout-service)"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="min-w-48 flex-1 rounded border px-3 py-2 text-sm"
-      />
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-      >
-        Create
-      </button>
-      {error && <p className="w-full text-sm text-red-600">{error}</p>}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex-1">
+          <TextField
+            label="New project"
+            name="name"
+            required
+            placeholder="checkout-service"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-9"
+          />
+        </div>
+        <Button type="submit" disabled={busy} aria-busy={busy} className="h-9 shrink-0 sm:mt-6">
+          <Plus aria-hidden="true" />
+          Create
+        </Button>
+      </div>
+      {error && <FormError>{error}</FormError>}
     </form>
   );
 }

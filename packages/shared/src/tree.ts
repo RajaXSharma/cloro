@@ -77,7 +77,7 @@ export type FolderNode = {
 };
 export type TreeNode = FileNode | FolderNode;
 
-// Folders are paths, not rows — the sidebar is derived from the flat list.
+// Folders are paths, not rows: the sidebar is derived from the flat list.
 // Returned order is folders before files, alphabetical within each, recursively.
 export function parsePaths(files: { id: string; path: string }[]): TreeNode[] {
   const root: FolderNode = { type: "folder", name: "", path: "", children: [] };

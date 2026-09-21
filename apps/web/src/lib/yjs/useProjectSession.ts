@@ -33,14 +33,14 @@ export interface FileSession {
  * Project-level state: the file list plus one collab session per open file, and
  * one roster session for the whole project (`roster:<projectId>`).
  *
- * File sessions live in a ref (not state) — opening a tab also changes `openIds`
+ * File sessions live in a ref (not state): opening a tab also changes `openIds`
  * in the page, which is what re-renders. They are created on demand and destroyed
  * only when the tab closes or the project unmounts, so switching tabs never
  * reconnects or reloads a doc.
  *
  * The roster doc is the live mirror of the tree (Postgres is authoritative): every
  * REST file op refreshes the list and publishes it into the map, and map changes
- * from peers are merged straight into `files` — no refetch needed. A refetch on
+ * from peers are merged straight into `files`, with no refetch needed. A refetch on
  * window focus repairs any divergence.
  */
 export function useProjectSession(projectId: string, activeId: string | null = null) {
@@ -61,7 +61,7 @@ export function useProjectSession(projectId: string, activeId: string | null = n
   /** Merge the roster map into `files`; unchanged rows keep their DB language. */
   const applyRoster = useCallback((map: Y.Map<string>) => {
     setFiles((prev) => {
-      // before the first sync the map is empty — keep the REST list we already have
+      // before the first sync the map is empty: keep the REST list we already have
       if (!rosterSynced.current && map.size === 0 && prev.length > 0) return prev;
       const before = new Map(prev.map((f) => [f.id, f]));
       const next: ProjectFile[] = [];
@@ -129,7 +129,7 @@ export function useProjectSession(projectId: string, activeId: string | null = n
       });
   }, []);
 
-  // one roster provider per project (never per tab — it carries project presence)
+  // one roster provider per project (never per tab: it carries project presence)
   useEffect(() => {
     const doc = new Y.Doc();
     const provider = new HocuspocusProvider({
@@ -171,7 +171,7 @@ export function useProjectSession(projectId: string, activeId: string | null = n
   const open = useCallback((fileId: string) => {
     if (sessions.current.has(fileId)) return;
     const yDoc = new Y.Doc();
-    // One manager per file, created here and destroyed in close() — never in an
+    // One manager per file, created here and destroyed in close(), never in an
     // effect cleanup. StrictMode's spurious cleanup would destroy it and Ctrl+Z
     // would then silently stop tracking new transactions.
     const undoManager = new Y.UndoManager(yDoc.getText('content'), {

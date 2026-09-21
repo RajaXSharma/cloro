@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Awareness } from 'y-protocols/awareness';
 import type { CollabUser } from '@/lib/yjs/useProjectSession';
+import { readableTextOn } from '@/lib/color';
 
 export type AwarenessState = { clientID: number; user?: CollabUser; openFile?: string | null };
 
@@ -25,6 +26,10 @@ export function useAwareness(awareness: Awareness | null): AwarenessState[] {
   return states;
 }
 
+/**
+ * Who is in the project and which file each of them has open. Presence colors come
+ * from the peer, so the label color is derived from the color rather than assumed.
+ */
 export function ProjectRoster({
   states,
   files,
@@ -41,24 +46,40 @@ export function ProjectRoster({
         return (
           <span
             key={clientID}
-            title={user!.name}
-            className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+            title={path ? `${user!.name} is in ${path}` : user!.name}
+            className="flex min-w-0 items-center gap-1.5"
           >
             <span
-              className="grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-medium text-white"
-              style={{ backgroundColor: user!.color }}
+              aria-hidden="true"
+              className="grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-medium"
+              style={{ backgroundColor: user!.color, color: readableTextOn(user!.color) }}
             >
               {user!.name.slice(0, 1).toUpperCase()}
             </span>
-            <span className="max-w-40 truncate">
+            <span className="max-w-24 truncate text-xs text-muted-foreground md:max-w-32">
               {user!.name}
-              {path ? ` · ${path}` : ''}
             </span>
+            {path && (
+              <span className="hidden max-w-40 truncate font-mono text-[11px] text-muted-foreground lg:inline">
+                {path}
+              </span>
+            )}
           </span>
         );
       })}
     </div>
   );
+}
+
+/**
+ * `hsl(217 70% 45%)` -> `hsl(217 70% 45% / 0.25)`.
+ *
+ * Appending an alpha byte to an `hsl()` function (`hsl(...)33`) is not valid CSS, so
+ * the declaration was dropped and every peer's selection fell back to one colour.
+ * Anything that is not a functional colour is returned untouched (already opaque).
+ */
+function withAlpha(color: string, alpha: number): string {
+  return color.replace(/\)\s*$/, ` / ${alpha})`);
 }
 
 /**
@@ -74,9 +95,9 @@ export function CursorStyles({ awareness }: { awareness: Awareness | null }) {
       const id = String(clientID);
       const name = user!.name.replace(/['\\{}]/g, '');
       return [
-        `.yRemoteSelection-${id}{background-color:${user!.color}33}`,
+        `.yRemoteSelection-${id}{background-color:${withAlpha(user!.color, 0.25)}}`,
         `.yRemoteSelectionHead-${id}{border-color:${user!.color}}`,
-        `.yRemoteSelectionHead-${id}::after{content:'${name}';background-color:${user!.color};color:#fff}`,
+        `.yRemoteSelectionHead-${id}::after{content:'${name}';background-color:${user!.color};color:${readableTextOn(user!.color)}}`,
       ].join('\n');
     })
     .join('\n');

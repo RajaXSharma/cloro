@@ -16,7 +16,7 @@ export const EditOpsSchema = z.object({ edits: z.array(EditOpSchema).min(1) });
 export type EditOp = z.infer<typeof EditOpSchema>;
 export type EditOps = z.infer<typeof EditOpsSchema>;
 
-// Structural slice of Y.Text — keeps yjs out of this package's deps.
+// Structural slice of Y.Text: keeps yjs out of this package's deps.
 export interface YTextLike {
   insert(index: number, text: string): void;
   delete(index: number, length: number): void;

@@ -50,7 +50,7 @@ export async function downloadProject(pid: string, projectName: string): Promise
   a.href = url;
   a.download = zipFilename(projectName);
   // the anchor has to be in the document: Safari ignores a click on a detached node.
-  // the URL is revoked a tick later — click() starts the navigation, and revoking
+  // the URL is revoked a tick later: click() starts the navigation, and revoking
   // before this function returns is the one way to cancel it underneath the browser.
   document.body.appendChild(a);
   a.click();
@@ -70,7 +70,7 @@ export const renameFile = (id: string, path: string) =>
 export const deleteFile = (id: string) =>
   req<{ deleted: string[] }>(`/files/${id}`, { method: 'DELETE' });
 
-// a folder has no id — it is a path prefix, so delete takes the prefix
+// a folder has no id: it is a path prefix, so delete takes the prefix
 export const deleteFolder = (pid: string, path: string) =>
   req<{ deleted: string[] }>(
     `/projects/${pid}/files?path=${encodeURIComponent(path)}`,

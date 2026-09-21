@@ -4,12 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+  Cloro design tokens.
+
+  One locked theme (dark), one accent (cobalt), one neutral ramp, one radius.
+  Nothing here is inherited from a third party: the ramp is tuned for this app and
+  the accent is used for primary actions, focus rings and interactive state only.
+*/
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,82 +49,73 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --color-panel: var(--panel);
+  --color-navy: var(--navy);
+
+  /* Shape lock: every radius utility resolves to the same 6px. Row-level
+     circles (avatars, presence dots) are the one documented exception and use
+     rounded-full directly. */
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  color-scheme: dark;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Surfaces, darkest first. `navy` is the same luminance class as `panel` but
+     hue-shifted, so a tinted cell never costs the muted text its contrast. */
+  --background: #0b0c0e;
+  --panel: #101215;
+  --navy: #0e2546;
+  --card: #101215;
+  --card-foreground: #e8eaed;
+  --popover: #15181c;
+  --popover-foreground: #e8eaed;
+  --secondary: #1c2025;
+  --secondary-foreground: #e8eaed;
+  --muted: #171a1e;
+  --muted-foreground: #8b929b;
+  --accent: #1c2025;
+  --accent-foreground: #e8eaed;
+
+  --foreground: #e8eaed;
+
+  /* Hairlines separate panels; --input is lighter because it is the visible
+     boundary of a control and must clear 3:1 against both the page and the
+     control's own fill (WCAG 1.4.11). */
+  --border: #23272c;
+  --input: #666e78;
+
+  /* Single accent: cobalt. Near-black label on the fill keeps the primary
+     button at 6.9:1, so it passes AA at any text size. */
+  --primary: #5b9bf8;
+  --primary-foreground: #0b0c0e;
+  --ring: #5b9bf8;
+
+  /* Semantic only. Never used as a second accent. */
+  --destructive: #ff6b70;
+
+  --chart-1: #5b9bf8;
+  --chart-2: #8b929b;
+  --chart-3: #4a525c;
+  --chart-4: #2b3138;
+  --chart-5: #1c2025;
+
+  --sidebar: #101215;
+  --sidebar-foreground: #e8eaed;
+  --sidebar-primary: #5b9bf8;
+  --sidebar-primary-foreground: #0b0c0e;
+  --sidebar-accent: #1c2025;
+  --sidebar-accent-foreground: #e8eaed;
+  --sidebar-border: #23272c;
+  --sidebar-ring: #5b9bf8;
+
+  --radius: 6px;
 }
 
 @layer base {
@@ -127,23 +128,86 @@
   html {
     @apply font-sans;
   }
+  /* Technical strings are deliberately mono: paths, counts, timestamps,
+     shortcuts, status. It is the clearest signal that this is a code tool. */
+  code,
+  kbd,
+  pre,
+  samp {
+    @apply font-mono;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
+
+@layer utilities {
+  /* Monospace metadata: one class so counts, paths and timestamps cannot drift. */
+  .meta {
+    @apply font-mono text-xs text-muted-foreground;
+  }
+}
+
+/* Dark, quiet scrollbars. The editor and the file tree are scroll-heavy, and the
+   default light scrollbar is the loudest thing on a near-black page. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--input);
+  }
+}
+
+/* Blanket guard: any transition or animation we add collapses under reduced
+   motion. Components do not each have to remember. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* y-monaco remote cursors/selections; per-client colors + name labels injected by presence.tsx */
 .yRemoteSelection {
-  background-color: rgba(59, 130, 246, 0.25);
+  background-color: color-mix(in oklab, var(--primary) 25%, transparent);
 }
 .yRemoteSelectionHead {
   position: absolute;
-  border-left: 2px solid #3b82f6;
-  border-top: 2px solid #3b82f6;
+  border-left: 2px solid var(--primary);
+  border-top: 2px solid var(--primary);
 }
+/* Presence affordances are the documented pill exception: avatars, roster dots and
+   remote-caret labels are fully round, everything else is the single 6px radius. */
 .yRemoteSelectionHead::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -1.4em;
   left: -2px;
-  padding: 1px 4px;
-  border-radius: 4px;
+  padding: 1px 5px;
+  border-radius: 9999px;
   font-size: 10px;
   line-height: 1.2;
   white-space: nowrap;

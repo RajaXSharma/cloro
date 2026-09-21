@@ -1,6 +1,6 @@
 // Quick-open ranking. A query matches when its characters appear in order in the
 // path (subsequence, case-insensitive); matches in the basename and adjacent runs
-// score higher, shorter paths break ties. Deliberately not a full fuzzy matcher —
+// score higher, shorter paths break ties. Deliberately not a full fuzzy matcher:
 // enough to put `src/x.ts` above `vendor/deep/x.ts` for "x".
 
 /** Score for one path, or null when the query is not a subsequence of it. */

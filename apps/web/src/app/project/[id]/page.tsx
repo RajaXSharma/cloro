@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { api } from '@/lib/api/client';
+import { ArrowLeft, Download, Share2 } from 'lucide-react';
 import { downloadProject } from '@/lib/api/projects';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
@@ -14,7 +15,14 @@ import { VersionPanel } from '@/components/editor/version-panel';
 import { ShareDialog } from '@/components/editor/share-dialog';
 import { AiSidebar } from '@/components/ai/ai-sidebar';
 import { CursorStyles, ProjectRoster, useAwareness } from '@/components/editor/presence';
+import { Button } from '@/components/ui/button';
 
+/**
+ * The workspace is a three-pane instrument on desktop. Below `lg` the panes become
+ * a vertical stack: the editor first (it holds whatever auto-opened), then the file
+ * tree, then the assistant. Every panel stays reachable, nothing is hidden away
+ * behind a control that did not exist before.
+ */
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -77,7 +85,8 @@ export default function ProjectPage() {
     openTab(files[0].id);
   }, [id, files, activeId, openIds.length, openTab]);
 
-  if (loading || !project) return <p className="p-8 text-sm text-muted-foreground">Loading…</p>;
+  if (loading || !project)
+    return <p className="p-8 text-sm text-muted-foreground">Loading…</p>;
 
   const session = activeId ? getSession(activeId) : null;
   const activeFile = files.find((f) => f.id === activeId) ?? null;
@@ -96,46 +105,54 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b px-4 py-2">
-        <a href="/dashboard" className="text-xs text-muted-foreground hover:underline">
-          ← Projects
-        </a>
-        <h1 className="text-sm font-medium">{project.name}</h1>
-        <span className="text-xs text-muted-foreground">{files.length} files</span>
+    <div className="flex min-h-[100dvh] flex-col lg:h-[100dvh]">
+      <header className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b bg-panel px-3 py-2 md:px-4">
+        <Link
+          href="/dashboard"
+          className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5" aria-hidden="true" />
+          Projects
+        </Link>
+        <span className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+        <h1 className="min-w-0 truncate text-sm font-medium">{project.name}</h1>
+        <span className="meta hidden shrink-0 sm:inline">{files.length} files</span>
         <div className="ml-auto flex items-center gap-3">
           <ProjectRoster states={rosterStates} files={files} />
-          {downloadError && <span className="text-xs text-red-600">{downloadError}</span>}
-          <button
+          {downloadError && (
+            <span role="alert" className="hidden text-xs text-destructive sm:inline">
+              {downloadError}
+            </span>
+          )}
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onDownload}
             disabled={downloading}
-            className="rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+            aria-busy={downloading}
           >
-            {downloading ? 'Preparing…' : 'Download .zip'}
-          </button>
+            <Download aria-hidden="true" />
+            <span className="hidden sm:inline">{downloading ? 'Preparing…' : 'Download .zip'}</span>
+            <span className="sm:hidden">Zip</span>
+          </Button>
           {project.is_owner && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => shareRef.current?.showModal()}
-              className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
             >
+              <Share2 aria-hidden="true" />
               Share
-            </button>
+            </Button>
           )}
         </div>
       </header>
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 shrink-0 overflow-hidden border-r">
-          <FileTree
-            projectId={id}
-            files={files}
-            activeId={activeId}
-            onOpen={openTab}
-            onChange={onFilesChange}
-          />
-        </aside>
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+
+      <div className="flex flex-1 flex-col lg:min-h-0 lg:flex-row lg:overflow-hidden">
+        {/* Editor first on small screens: it holds the auto-opened file. */}
+        <main className="order-1 flex min-w-0 flex-col lg:order-2 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
           <FileTabs
             files={files}
             openIds={openIds}
@@ -144,16 +161,21 @@ export default function ProjectPage() {
             onSelect={setActiveId}
             onClose={closeTab}
           />
+
           {(status === 'disconnected' || rosterStatus === 'disconnected') && (
-            <div className="shrink-0 bg-red-600 px-4 py-1.5 text-center text-xs text-white">
-              Connection lost — reconnecting…
+            <div
+              role="status"
+              className="shrink-0 border-b border-destructive/40 bg-destructive/8 px-4 py-1.5 text-center text-xs font-medium text-destructive"
+            >
+              Connection lost. Reconnecting…
             </div>
           )}
+
           {session && activeFile ? (
             <>
               <CursorStyles awareness={session.provider.awareness ?? null} />
               <Toolbar path={activeFile.path} status={status} />
-              <div className="min-h-0 flex-1">
+              <div className="min-h-[60dvh] lg:min-h-0 lg:flex-1">
                 <Editor
                   key={activeId}
                   yDoc={session.yDoc}
@@ -164,21 +186,42 @@ export default function ProjectPage() {
               </div>
             </>
           ) : (
-            <div className="grid flex-1 place-items-center text-sm text-muted-foreground">
-              Select a file…
+            <div className="grid min-h-[40dvh] place-items-center px-4 text-center lg:flex-1">
+              <p className="text-sm text-muted-foreground">
+                Select a file, or press{' '}
+                <kbd className="rounded-sm border bg-panel px-1.5 py-0.5 font-mono text-xs">Ctrl</kbd>{' '}
+                <kbd className="rounded-sm border bg-panel px-1.5 py-0.5 font-mono text-xs">P</kbd> to
+                search.
+              </p>
             </div>
           )}
         </main>
+
+        <aside className="order-2 h-64 shrink-0 overflow-hidden border-t bg-panel lg:order-1 lg:h-auto lg:w-64 lg:border-t-0 lg:border-r">
+          <FileTree
+            projectId={id}
+            files={files}
+            activeId={activeId}
+            onOpen={openTab}
+            onChange={onFilesChange}
+          />
+        </aside>
+
         {/* panels follow the active tab: key remounts them per file, so an
             in-flight AI apply is dropped instead of landing in the wrong file */}
-        <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-l">
+        <aside className="order-3 flex h-[30rem] shrink-0 flex-col overflow-hidden border-t bg-panel lg:h-auto lg:w-80 lg:border-t-0 lg:border-l">
           {session && activeFile ? (
             <>
               <div className="max-h-56 shrink-0 overflow-y-auto border-b">
                 <VersionPanel fileId={activeId!} />
               </div>
               <div className="min-h-0 flex-1 overflow-hidden">
-                <AiSidebar key={activeId} fileId={activeId!} path={activeFile.path} yDoc={session.yDoc} />
+                <AiSidebar
+                  key={activeId}
+                  fileId={activeId!}
+                  path={activeFile.path}
+                  yDoc={session.yDoc}
+                />
               </div>
             </>
           ) : (
@@ -186,6 +229,7 @@ export default function ProjectPage() {
           )}
         </aside>
       </div>
+
       <QuickOpen files={files} onOpen={openTab} />
       <ShareDialog projectId={id} dialogRef={shareRef} />
     </div>

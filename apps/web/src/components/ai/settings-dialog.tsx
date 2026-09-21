@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { api } from '@/lib/api/client';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/field';
 
 export function SettingsDialog({
   dialogRef,
@@ -41,62 +44,63 @@ export function SettingsDialog({
     // native <dialog>: showModal gives the backdrop, Esc-to-close and focus for free
     <dialog
       ref={dialogRef}
-      className="w-[24rem] rounded-lg border bg-background p-6 backdrop:bg-black/50"
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border bg-popover p-6 text-popover-foreground shadow-2xl backdrop:bg-black/60"
     >
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">AI Settings</h2>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">AI Settings</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Bring your own key, stored server-side against your account. Any
+            OpenAI-compatible endpoint works (OpenAI, OpenRouter, local stub…).
+          </p>
+        </div>
         <button
           type="button"
           aria-label="Close"
           onClick={() => dialogRef.current?.close()}
-          className="px-2 text-lg text-muted-foreground hover:text-foreground"
+          className="-mr-1 -mt-1 rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          ✕
+          <X className="size-4" aria-hidden="true" />
         </button>
       </div>
-      <p className="mb-4 text-xs text-muted-foreground">
-        Bring your own key — stored server-side against your account. Any
-        OpenAI-compatible endpoint works (OpenAI, OpenRouter, local stub…).
-      </p>
-      <form onSubmit={save} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          API key{' '}
-          {hasKey && (
-            <span className="text-xs text-muted-foreground">(saved — leave blank to keep)</span>
+
+      <form onSubmit={save} className="flex flex-col gap-4">
+        <TextField
+          label="API key"
+          name="api_key"
+          type="password"
+          autoComplete="off"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={hasKey ? '••••••••' : 'sk-…'}
+          hint={hasKey ? 'A key is saved. Leave blank to keep it.' : undefined}
+        />
+        <TextField
+          label="Model name"
+          name="model"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="gpt-4o-mini"
+        />
+        <TextField
+          label="Base URL"
+          name="base_url"
+          type="url"
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          placeholder="https://openrouter.ai/api/v1"
+          hint="Optional. Blank means OpenAI."
+        />
+        <div className="flex items-center gap-3">
+          <Button type="submit" className="h-9">
+            Save
+          </Button>
+          {saved && (
+            <span role="status" className="text-xs text-muted-foreground">
+              Saved.
+            </span>
           )}
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={hasKey ? '••••••••' : 'sk-…'}
-            className="rounded-md border bg-background px-2 py-1"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Model name
-          <input
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            placeholder="gpt-4o-mini"
-            className="rounded-md border bg-background px-2 py-1"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Base URL <span className="text-xs text-muted-foreground">(optional — blank means OpenAI)</span>
-          <input
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="https://openrouter.ai/api/v1"
-            className="rounded-md border bg-background px-2 py-1"
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
-        >
-          Save
-        </button>
-        {saved && <span className="text-xs text-green-600">Saved.</span>}
+        </div>
       </form>
     </dialog>
   );

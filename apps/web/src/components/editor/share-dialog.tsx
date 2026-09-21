@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { UserPlus, X } from 'lucide-react';
 import { api } from '@/lib/api/client';
+import { Button } from '@/components/ui/button';
+import { FormError, TextField } from '@/components/ui/field';
 
 interface Collaborator {
   id: string;
@@ -61,51 +64,66 @@ export function ShareDialog({
     // native <dialog>: showModal gives the backdrop, Esc-to-close and focus for free
     <dialog
       ref={dialogRef}
-      className="w-[24rem] rounded-lg border bg-background p-6 backdrop:bg-black/50"
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border bg-popover p-6 text-popover-foreground shadow-2xl backdrop:bg-black/60"
     >
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Share</h2>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Share</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Anyone you add can create, rename and delete files.
+          </p>
+        </div>
         <button
           type="button"
           aria-label="Close"
           onClick={() => dialogRef.current?.close()}
-          className="px-2 text-lg text-muted-foreground hover:text-foreground"
+          className="-mr-1 -mt-1 rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          ✕
+          <X className="size-4" aria-hidden="true" />
         </button>
       </div>
-      <form onSubmit={invite} className="mb-4 flex gap-2">
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="collaborator@email.com"
-          className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={busy || !email.trim()}
-          className="rounded-md bg-primary px-3 py-1 text-sm text-primary-foreground disabled:opacity-50"
-        >
-          Invite
-        </button>
+
+      <form onSubmit={invite} className="flex flex-col gap-3 border-b pb-4">
+        <div className="flex items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <TextField
+              label="Invite by email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="collaborator@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-9"
+            />
+          </div>
+          <Button type="submit" disabled={busy || !email.trim()} className="h-9 shrink-0">
+            <UserPlus aria-hidden="true" />
+            Invite
+          </Button>
+        </div>
+        {error && <FormError>{error}</FormError>}
       </form>
-      {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
+
       {collabs === null ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <p className="pt-4 text-xs text-muted-foreground">Loading…</p>
       ) : collabs.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No collaborators yet.</p>
+        <p className="pt-4 text-xs text-muted-foreground">No collaborators yet.</p>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col divide-y pt-2">
           {collabs.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-sm">
-              <span className="min-w-0 truncate">
-                {c.name} <span className="text-xs text-muted-foreground">{c.email}</span>
+            <li key={c.id} className="flex items-center justify-between gap-3 py-2">
+              <span className="min-w-0">
+                <span className="block truncate text-sm">{c.name}</span>
+                <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                  {c.email}
+                </span>
               </span>
               <button
                 type="button"
                 onClick={() => remove(c.id)}
                 disabled={busy}
-                className="shrink-0 text-xs text-red-600 hover:underline disabled:opacity-50"
+                className="shrink-0 rounded-sm text-xs text-destructive underline-offset-2 transition-colors hover:underline disabled:opacity-50"
               >
                 Remove
               </button>

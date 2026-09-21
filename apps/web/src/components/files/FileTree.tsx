@@ -18,6 +18,7 @@ import {
   renameFolder,
   type ProjectFile,
 } from '@/lib/api/projects';
+import { Input } from '@/components/ui/field';
 import { FileIcon } from './file-icons';
 
 interface Props {
@@ -28,11 +29,17 @@ interface Props {
   /** Clicking a file row opens it as a tab. */
   onOpen: (fileId: string) => void;
   /** Receives the deleted file ids so the page can close their tabs, and refetches
-   * the list — awaited before a newly created file is opened, so its tab has a path. */
+   * the list, awaited before a newly created file is opened, so its tab has a path. */
   onChange: (deletedIds?: string[]) => unknown;
 }
 
 type Creating = { mode: 'file' | 'folder'; dir: string } | null;
+
+/** Hover actions stay visible below `md`, where there is no hover to reveal them. */
+const ACTION_BUTTON =
+  'rounded-sm p-0.5 transition-colors hover:bg-background focus-visible:bg-background';
+const ACTION_CLUSTER =
+  'flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100';
 
 /**
  * The tree is derived from the flat path list (`parsePaths`), so folders are
@@ -125,19 +132,20 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
   // one input, either at the root or indented under the folder it writes into
   const newPathRow = (depth: number) => (
     <div className="py-1 pr-1" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
-      <input
+      <Input
         autoFocus
         value={newPath}
         placeholder={
           creating?.mode === 'folder' ? 'folder name' : creating?.dir ? 'name.ts' : 'src/lib/x.ts'
         }
+        aria-label={creating?.mode === 'folder' ? 'New folder name' : 'New file path'}
         onChange={(e) => setNewPath(e.target.value)}
         onKeyDown={async (e) => {
           if (e.key === 'Escape') setCreating(null);
           if (e.key === 'Enter') await submitNew();
         }}
         onBlur={() => setCreating(null)}
-        className="w-full rounded border bg-background px-2 py-1 text-xs"
+        className="h-7 px-2 text-xs"
       />
     </div>
   );
@@ -152,15 +160,16 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
         return (
           <div
             key={node.id}
-            className={`group flex items-center gap-1.5 py-1 pr-1 ${
-              active ? 'bg-muted font-medium' : 'hover:bg-muted'
+            className={`group flex items-center gap-1.5 py-1 pr-1 transition-colors ${
+              active ? 'bg-primary/12 text-foreground' : 'hover:bg-muted'
             }`}
             style={pad}
           >
             {renamingId === node.id ? (
-              <input
+              <Input
                 autoFocus
                 value={renamePath}
+                aria-label={`Rename ${node.path}`}
                 onChange={(e) => setRenamePath(e.target.value)}
                 onKeyDown={async (e) => {
                   if (e.key === 'Escape') setRenamingId(null);
@@ -168,7 +177,7 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                     setRenamingId(null);
                 }}
                 onBlur={() => setRenamingId(null)}
-                className="w-full rounded border bg-background px-1 text-xs"
+                className="h-7 px-2 text-xs"
               />
             ) : (
               <>
@@ -177,9 +186,11 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                   className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
                 >
                   <FileIcon name={node.name} className="size-3.5 shrink-0" />
-                  <span className="truncate text-xs">{node.name}</span>
+                  <span className={`truncate text-xs ${active ? 'font-medium' : ''}`}>
+                    {node.name}
+                  </span>
                 </button>
-                <span className="flex shrink-0 items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                <span className={ACTION_CLUSTER}>
                   <button
                     onClick={() => {
                       setRenamingId(node.id);
@@ -190,9 +201,9 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                     }}
                     title={`Rename ${node.path}`}
                     aria-label={`Rename ${node.path}`}
-                    className="rounded p-0.5 hover:bg-background"
+                    className={`${ACTION_BUTTON} text-muted-foreground hover:text-foreground`}
                   >
-                    <Pencil className="size-3" />
+                    <Pencil className="size-3" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() =>
@@ -200,9 +211,9 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                     }
                     title={`Delete ${node.path}`}
                     aria-label={`Delete ${node.path}`}
-                    className="rounded p-0.5 text-red-600 hover:bg-background"
+                    className={`${ACTION_BUTTON} text-destructive hover:bg-destructive/10`}
                   >
-                    <Trash2 className="size-3" />
+                    <Trash2 className="size-3" aria-hidden="true" />
                   </button>
                 </span>
               </>
@@ -215,13 +226,15 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
       const renamingThis = renamingFolder?.path === node.path;
       return (
         <div key={node.path}>
-          <div className="group flex items-center gap-1.5 py-1 pr-1 hover:bg-muted" style={pad}>
+          <div className="group flex items-center gap-1.5 py-1 pr-1 transition-colors hover:bg-muted" style={pad}>
             {renamingThis ? (
               <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
                 {renamingFolder.parent && (
-                  <span className="shrink-0 text-muted-foreground">{renamingFolder.parent}/</span>
+                  <span className="shrink-0 font-mono text-muted-foreground">
+                    {renamingFolder.parent}/
+                  </span>
                 )}
-                <input
+                <Input
                   autoFocus
                   value={folderName}
                   aria-label={`Rename folder ${node.path}`}
@@ -231,7 +244,7 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                     if (e.key === 'Enter') await submitFolderRename();
                   }}
                   onBlur={() => setRenamingFolder(null)}
-                  className="min-w-0 flex-1 rounded border bg-background px-1 text-xs"
+                  className="h-7 min-w-0 flex-1 px-2 text-xs"
                 />
               </span>
             ) : (
@@ -245,28 +258,28 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                   className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
                 >
                   {isCollapsed ? (
-                    <ChevronRight className="size-3.5 shrink-0" />
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="size-3.5 shrink-0" />
+                    <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   )}
                   <span className="truncate text-xs font-medium">{node.name}</span>
                 </button>
-                <span className="flex shrink-0 items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                <span className={ACTION_CLUSTER}>
                   <button
                     onClick={() => startCreate('file', node.path)}
                     title={`New file in ${node.path}`}
                     aria-label={`New file in ${node.path}`}
-                    className="rounded p-0.5 hover:bg-background"
+                    className={`${ACTION_BUTTON} text-muted-foreground hover:text-foreground`}
                   >
-                    <FilePlus2 className="size-3" />
+                    <FilePlus2 className="size-3" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => startCreate('folder', node.path)}
                     title={`New folder in ${node.path}`}
                     aria-label={`New folder in ${node.path}`}
-                    className="rounded p-0.5 hover:bg-background"
+                    className={`${ACTION_BUTTON} text-muted-foreground hover:text-foreground`}
                   >
-                    <FolderPlus className="size-3" />
+                    <FolderPlus className="size-3" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => {
@@ -278,9 +291,9 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                     }}
                     title={`Rename folder ${node.path}`}
                     aria-label={`Rename folder ${node.path}`}
-                    className="rounded p-0.5 hover:bg-background"
+                    className={`${ACTION_BUTTON} text-muted-foreground hover:text-foreground`}
                   >
-                    <Pencil className="size-3" />
+                    <Pencil className="size-3" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() =>
@@ -289,9 +302,9 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                     }
                     title={`Delete folder ${node.path}`}
                     aria-label={`Delete folder ${node.path}`}
-                    className="rounded p-0.5 text-red-600 hover:bg-background"
+                    className={`${ACTION_BUTTON} text-destructive hover:bg-destructive/10`}
                   >
-                    <Trash2 className="size-3" />
+                    <Trash2 className="size-3" aria-hidden="true" />
                   </button>
                 </span>
               </>
@@ -307,32 +320,43 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Files</span>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">
+        <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+          Files
+        </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => startCreate('file')}
             title="New file"
             aria-label="New file"
-            className="rounded border p-1 hover:bg-muted"
+            className={`${ACTION_BUTTON} border text-muted-foreground hover:text-foreground`}
           >
-            <FilePlus2 className="size-3.5" />
+            <FilePlus2 className="size-3.5" aria-hidden="true" />
           </button>
           <button
             onClick={() => startCreate('folder')}
             title="New folder"
             aria-label="New folder"
-            className="rounded border p-1 hover:bg-muted"
+            className={`${ACTION_BUTTON} border text-muted-foreground hover:text-foreground`}
           >
-            <FolderPlus className="size-3.5" />
+            <FolderPlus className="size-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
-      {error && <p className="border-b px-3 py-1 text-xs text-red-600">{error}</p>}
-      <div className="flex-1 overflow-y-auto py-1 text-sm">
+
+      {error && (
+        <p role="alert" className="shrink-0 border-b px-3 py-1 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {creating?.dir === '' && newPathRow(0)}
         {tree.length === 0 && !creating ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground">No files yet — add one above.</p>
+          <div className="px-3 py-3">
+            <p className="text-xs font-medium">No files yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">Add one above.</p>
+          </div>
         ) : (
           rows(tree, 0)
         )}

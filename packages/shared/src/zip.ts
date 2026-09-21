@@ -4,7 +4,7 @@
  * The backend sends it in `Content-Disposition` and the web client uses it for the
  * blob download, so both name the file from one rule.
  *
- * ponytail: ASCII only — a project named entirely in another script falls back to
+ * ponytail: ASCII only, so a project named entirely in another script falls back to
  * `project.zip`. Keeps `Content-Disposition` quoting trivial; add RFC 5987
  * (`filename*=UTF-8''…`) if non-Latin project names start mattering.
  */

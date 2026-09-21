@@ -1,66 +1,89 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { GitHubMark } from "@/components/brand";
+import { Button } from "@/components/ui/button";
+import { FormError, TextField } from "@/components/ui/field";
 
 export function LoginForm({ showGithub }: { showGithub: boolean }) {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError('');
-    const res = await signIn('credentials', { email, password, redirect: false });
+    setError("");
+    const res = await signIn("credentials", { email, password, redirect: false });
     if (res?.error) {
-      setError('invalid credentials');
+      setError("invalid credentials");
       return;
     }
-    router.push('/dashboard');
+    router.push("/dashboard");
     router.refresh();
   }
 
   return (
-    <div className="mx-auto mt-24 w-full max-w-sm space-y-6">
-      <h1 className="text-xl font-semibold">Sign in to Cloro</h1>
+    <AuthShell
+      title="Sign in to Cloro"
+      subtitle="Use GitHub, or the email and password on your account."
+      footer={
+        <>
+          No account?{" "}
+          <Link href="/register" className="text-foreground underline underline-offset-4">
+            Register
+          </Link>
+        </>
+      }
+    >
       {showGithub && (
-        <button
-          onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
-          className="w-full rounded border px-4 py-2 text-sm"
-        >
-          Continue with GitHub
-        </button>
+        <div className="flex flex-col gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-full"
+            onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+          >
+            <GitHubMark className="size-4" />
+            Continue with GitHub
+          </Button>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </div>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <TextField
+          label="Email"
+          name="email"
           type="email"
+          autoComplete="email"
           required
-          placeholder="email"
+          placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2 text-sm"
         />
-        <input
+        <TextField
+          label="Password"
+          name="password"
           type="password"
+          autoComplete="current-password"
           required
-          placeholder="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded border px-3 py-2 text-sm"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" className="w-full rounded bg-black px-4 py-2 text-sm text-white">
+        {error && <FormError>{error}</FormError>}
+        <Button type="submit" className="h-9 w-full">
           Sign in
-        </button>
+        </Button>
       </form>
-      <p className="text-sm text-gray-500">
-        No account?{' '}
-        <a href="/register" className="underline">
-          Register
-        </a>
-      </p>
-    </div>
+    </AuthShell>
   );
 }

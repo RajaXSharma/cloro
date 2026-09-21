@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api/client';
+import { Button } from '@/components/ui/button';
 
 interface Snapshot {
   id: string;
@@ -48,36 +49,44 @@ export function VersionPanel({ fileId }: { fileId: string }) {
   }
 
   return (
-    <div className="flex h-full flex-col gap-2 p-3 text-sm">
-      <div className="flex items-center justify-between">
-        <span className="font-medium">Versions</span>
-        <button
-          onClick={save}
-          disabled={busy}
-          className="rounded-md border bg-background px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
-        >
+    <div className="flex h-full flex-col gap-2 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+          Versions
+        </span>
+        <Button variant="outline" size="xs" onClick={save} disabled={busy}>
           Save version
-        </button>
+        </Button>
       </div>
-      {snapshots.length === 0 && (
+
+      {snapshots.length === 0 ? (
         <p className="text-xs text-muted-foreground">No versions yet.</p>
-      )}
-      <ul className="flex flex-col gap-1 overflow-y-auto">
-        {snapshots.map((s) => (
-          <li key={s.id} className="flex items-center justify-between gap-2 rounded-md border px-2 py-1">
-            <span className="min-w-0 truncate text-xs">
-              {s.label ?? 'manual'} · {new Date(s.created_at).toLocaleTimeString()}
-            </span>
-            <button
-              onClick={() => restore(s)}
-              disabled={busy}
-              className="shrink-0 text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+      ) : (
+        <ul className="flex flex-col gap-1 overflow-y-auto">
+          {snapshots.map((s) => (
+            <li
+              key={s.id}
+              className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
             >
-              Restore
-            </button>
-          </li>
-        ))}
-      </ul>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate font-mono text-[11px] text-foreground">
+                  {s.label ?? 'manual'}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {new Date(s.created_at).toLocaleTimeString()}
+                </span>
+              </span>
+              <button
+                onClick={() => restore(s)}
+                disabled={busy}
+                className="shrink-0 rounded-sm text-[11px] text-primary underline-offset-2 transition-colors hover:underline disabled:opacity-50"
+              >
+                Restore
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

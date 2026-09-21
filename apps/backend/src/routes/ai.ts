@@ -8,7 +8,7 @@ import { EditOpsSchema } from "shared";
 
 export const aiRouter = Router();
 
-// ponytail: user API keys stored plaintext in DB — fine for a self-hosted demo;
+// ponytail: user API keys stored plaintext in DB - fine for a self-hosted demo;
 // encrypt or move to a secrets store if this ever becomes multi-tenant SaaS.
 async function getAiConfig(userId: string) {
   const { rows } = await query(
@@ -25,6 +25,19 @@ const settingsSchema = z.object({
   model: z.string().min(1).optional(),
   base_url: z.string().optional(),
 });
+
+/**
+ * Every provider failure used to surface as one blanket "check your key, model and
+ * base URL" message, which sends people chasing credentials when the real answer is
+ * a rate limit. Name the two common transient cases; everything else (bad key,
+ * unknown model, unreachable base URL) keeps the generic text.
+ */
+function providerErrorMessage(e: unknown): string {
+  const status = (e as { status?: number } | null)?.status;
+  if (status === 429) return "AI rate limited. Retry shortly.";
+  if (status === 503) return "Model overloaded. Try again.";
+  return "ai request failed. Check your key, model and base URL in settings";
+}
 
 aiRouter.get("/settings", async (req, res) => {
   const { rows } = await query(
@@ -87,8 +100,9 @@ aiRouter.post("/chat", async (req, res) => {
       if (delta) res.write(`data: ${JSON.stringify({ delta })}\n\n`);
     }
     res.write("data: [DONE]\n\n");
-  } catch {
-    res.write(`data: ${JSON.stringify({ error: "ai request failed — check your key, model and base URL in settings" })}\n\n`);
+  } catch (e) {
+    console.error("[ai/chat] provider request failed:", e instanceof Error ? e.message : e);
+    res.write(`data: ${JSON.stringify({ error: providerErrorMessage(e) })}\n\n`);
   } finally {
     res.end();
   }
@@ -111,13 +125,18 @@ aiRouter.post("/apply", async (req, res) => {
   const doc = await getDocText(parsed.data.documentId);
   if (!doc) return res.status(404).json({ error: "document not found" });
 
-  // backend never applies — returns edits, client validates + transacts
+  // backend never applies - returns edits, client validates + transacts
   try {
     const openai = new OpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL });
     const completion = await openai.chat.completions.create({
       model: cfg.model,
       messages: [
-        { role: "system", content: applySystem(doc.path, doc.text, parsed.data.instruction) },
+        { role: "system", content: applySystem(doc.path, doc.text) },
+        // The instruction has to travel as a user turn. A system-only messages
+        // array is accepted by OpenAI but rejected by Google's compat endpoint
+        // (400 "contents is not specified"), which made Edit mode fail while Ask
+        // mode worked. See src/routes/ai.test.ts.
+        { role: "user", content: parsed.data.instruction },
       ],
       response_format: {
         type: "json_schema",
@@ -129,7 +148,10 @@ aiRouter.post("/apply", async (req, res) => {
     const result = EditOpsSchema.safeParse(JSON.parse(raw));
     if (!result.success) return res.status(502).json({ error: "ai returned invalid edits" });
     res.json(result.data);
-  } catch {
-    res.status(502).json({ error: "ai request failed — check your key, model and base URL in settings" });
+  } catch (e) {
+    // Don't swallow the provider's reason: an empty catch here is what turned a
+    // clear 400 from the provider into an unactionable "ai request failed".
+    console.error("[ai/apply] provider request failed:", e instanceof Error ? e.message : e);
+    res.status(502).json({ error: providerErrorMessage(e) });
   }
 });

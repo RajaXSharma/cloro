@@ -6,6 +6,7 @@ import type * as Y from 'yjs';
 import { api } from '@/lib/api/client';
 import { applyEdits, validateEdits, DocumentChangedError, type EditOp } from 'shared';
 import { SettingsDialog } from '@/components/ai/settings-dialog';
+import { Textarea } from '@/components/ui/field';
 
 interface Msg {
   role: 'user' | 'assistant';
@@ -101,12 +102,12 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
         body: JSON.stringify({ documentId: fileId, instruction }),
       });
       if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: 'AI request failed — try again.' }));
+        const { error } = await res.json().catch(() => ({ error: 'AI request failed. Try again.' }));
         appendLast(error);
         return;
       }
       const { edits } = (await res.json()) as { edits: EditOp[] };
-      // tab switched while the model was thinking — drop the ops rather than
+      // tab switched while the model was thinking: drop the ops rather than
       // edit a file the user is no longer looking at
       if (!alive.current) return;
       const yText = yDoc.getText('content');
@@ -116,7 +117,7 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
         appendLast(`Applied ${valid.length} edit(s).`);
       } catch (e) {
         if (e instanceof DocumentChangedError)
-          appendLast('Document changed since the AI saw it — ask again.');
+          appendLast('Document changed since the AI saw it. Ask again.');
         else throw e;
       }
     } finally {
@@ -147,41 +148,44 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
   }
 
   return (
-    <div className="flex h-full flex-col text-sm">
-      <span className="flex items-center justify-between border-b px-3 py-2 font-medium">
-        AI Assistant
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">
+        <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+          AI Assistant
+        </span>
         <button
           type="button"
           onClick={() => settingsRef.current?.showModal()}
-          className="text-xs font-normal text-muted-foreground hover:underline"
+          className="rounded-sm text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
         >
           Settings
         </button>
-      </span>
-      <ul ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
+      </div>
+
+      <ul ref={listRef} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         {messages.map((m, i) => (
           <li
             key={i}
             className={
               m.role === 'user'
-                ? 'self-end rounded-lg bg-primary px-2 py-1 text-primary-foreground'
-                : 'self-start rounded-lg bg-muted px-2 py-1 whitespace-pre-wrap'
+                ? 'self-end rounded-md bg-primary px-2.5 py-1.5 text-xs leading-relaxed text-primary-foreground'
+                : 'self-start rounded-md bg-secondary px-2.5 py-1.5 text-xs leading-relaxed whitespace-pre-wrap text-secondary-foreground'
             }
           >
-            {m.content || (
-              <span className="animate-pulse text-muted-foreground">Thinking…</span>
-            )}
+            {m.content || <span className="animate-pulse text-muted-foreground">Thinking…</span>}
           </li>
         ))}
       </ul>
-      <form onSubmit={onSubmit} className="flex flex-col gap-2 border-t p-2">
-        <textarea
+
+      <form onSubmit={onSubmit} className="flex shrink-0 flex-col gap-2 border-t p-2">
+        <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={mode === 'edit' ? 'Describe an edit…' : 'Ask a question…'}
+          aria-label={mode === 'edit' ? 'Describe an edit' : 'Ask a question'}
           rows={2}
           onKeyDown={sendOnEnter}
-          className="resize-none rounded-md border bg-background px-2 py-1"
+          className="resize-none text-xs"
         />
         <div className="flex items-center justify-between gap-2">
           <select
@@ -189,7 +193,7 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
             onChange={(e) => setMode(e.target.value as Mode)}
             aria-label="AI mode"
             title="Ask a question, or apply an edit"
-            className="rounded-md border bg-background px-1.5 py-1 text-xs text-muted-foreground"
+            className="rounded-md border border-input bg-secondary/40 px-2 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
           >
             <option value="ask">Ask</option>
             <option value="edit">Edit</option>
@@ -199,12 +203,13 @@ export function AiSidebar({ fileId, path, yDoc }: { fileId: string; path: string
             disabled={busy || !input.trim()}
             aria-label="Send"
             title="Send"
-            className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+            className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            <ArrowUp className="size-4" />
+            <ArrowUp className="size-4" aria-hidden="true" />
           </button>
         </div>
       </form>
+
       <SettingsDialog dialogRef={settingsRef} />
     </div>
   );
