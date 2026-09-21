@@ -11,7 +11,8 @@ import { aiRouter } from './routes/ai.js';
 export function createApp() {
   const app = express();
   app.use(morgan('dev'));
-  app.use(cors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000' }));
+  const allowedOrigins = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',');
+  app.use(cors({ origin: allowedOrigins }));
   app.use(express.json());
 
   // public routes
