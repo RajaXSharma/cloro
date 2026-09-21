@@ -19,8 +19,8 @@ export async function getFileText(
   );
   if (!rows[0]) return null;
 
-  // Server wraps the Hocuspocus core — the live-docs map is on the inner object
-  const live = hocuspocus.hocuspocus.documents.get(fileId);
+  // REST and collab share one process now — live docs are reachable directly
+  const live = hocuspocus.documents.get(fileId);
   let doc: Y.Doc;
   if (live) {
     doc = live;

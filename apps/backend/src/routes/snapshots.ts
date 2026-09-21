@@ -11,7 +11,7 @@ export const snapshotsRouter = Router({ mergeParams: true });
 
 function currentState(docId: string): Uint8Array | null {
   // Server wraps the Hocuspocus core — the live-docs map is on the inner object
-  const live = hocuspocus.hocuspocus.documents.get(docId);
+  const live = hocuspocus.documents.get(docId);
   if (live) return Y.encodeStateAsUpdate(live);
   return null;
 }
@@ -56,7 +56,7 @@ snapshotsRouter.post("/:sid/restore", async (req: RestoreReq, res) => {
   if (!rows[0]) return res.status(404).json({ error: "snapshot not found" });
 
   const snapState: Uint8Array = new Uint8Array(rows[0].state);
-  const live = hocuspocus.hocuspocus.documents.get(req.params.fid);
+  const live = hocuspocus.documents.get(req.params.fid);
 
   if (live) {
     // re-applying the snapshot update directly is a no-op (its clock is already

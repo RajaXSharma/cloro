@@ -1,41 +1,63 @@
+import { createServer } from 'node:http';
+import crossws from 'crossws/adapters/node';
 import { createApp } from './http.js';
-import { hocuspocus, service } from './collab.js';
+import { hocuspocus } from './collab.js';
+import type { WebSocketLike } from '@hocuspocus/server';
 
+const port = Number(process.env.PORT ?? 4000);
 const host = process.env.IP ?? process.env.HOST;
-const closers: Array<() => unknown> = [];
 
-if (service !== 'ws') {
-  const port = Number(process.env.PORT ?? 4000);
-  const app = createApp();
-  const onListen = () => console.log(`HTTP listening on ${host ?? '0.0.0.0'}:${port}`);
-  const httpServer = host ? app.listen(port, host, onListen) : app.listen(port, onListen);
-  closers.push(
-    () =>
-      new Promise<void>((resolve, reject) =>
-        httpServer.close((err) => (err ? reject(err) : resolve())),
-      ),
-  );
-}
+const app = createApp();
+const httpServer = createServer(app);
 
-if (service !== 'rest') {
-  await hocuspocus.listen();
-  console.log(`WebSocket listening on ${host ?? '0.0.0.0'}:${hocuspocus.address.port}`);
-  closers.push(() => hocuspocus.destroy());
-}
-
-// Hocuspocus's listen() never rejects on a bind error — the error lands on the
-// underlying http server and, unhandled, kills the process (alwaysdata then
-// reports "Upstream not ready"). Route it into a retry instead.
-hocuspocus.httpServer.on('error', (err: NodeJS.ErrnoException) => {
-  console.error(`WS bind failed (${err.code}): retrying in 3s`);
-  setTimeout(() => {
-    hocuspocus.httpServer.listen(hocuspocus.address.port);
-  }, 3000);
+const ws = crossws({
+  hooks: {
+    open(peer) {
+      (peer as { _hocuspocus?: unknown })._hocuspocus = hocuspocus.handleConnection(
+        peer.websocket as unknown as WebSocketLike,
+        peer.request as Request,
+      );
+    },
+    message(peer, message) {
+      (peer as { _hocuspocus?: { handleMessage: (data: Uint8Array) => void } })
+        ._hocuspocus?.handleMessage(message.uint8Array());
+    },
+    close(peer, event) {
+      (peer as { _hocuspocus?: { handleClose: (e: { code?: number; reason?: string }) => void } })
+        ._hocuspocus?.handleClose({ code: event.code, reason: event.reason });
+    },
+    error(peer, error) {
+      console.error(`WebSocket error for peer ${peer.id}:`, error);
+    },
+  },
 });
+
+// every upgrade — any path — is collab; Hocuspocus ignores paths and the
+// alwaysdata proxy trims /ws before it gets here
+httpServer.on('upgrade', (request, socket, head) => {
+  ws.handleUpgrade(request, socket, head);
+});
+
+const onListen = () => console.log(`listening on ${host ?? '0.0.0.0'}:${port}`);
+if (host) httpServer.listen(port, host, onListen);
+else httpServer.listen(port, onListen);
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  console.error(`bind failed (${err.code}): retrying in 3s`);
+  setTimeout(() => httpServer.listen(port, host), 3000);
+});
+
+const closers: Array<() => unknown> = [
+  () =>
+    new Promise<void>((resolve, reject) =>
+      httpServer.close((err) => (err ? reject(err) : resolve())),
+    ),
+  () => hocuspocus.closeConnections(),
+  () => hocuspocus.flushPendingStores(),
+];
 
 async function shutdown() {
   console.log('Shutting down…');
-  await Promise.all(closers.map((close) => close()));
+  await Promise.allSettled(closers.map((close) => close()));
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
