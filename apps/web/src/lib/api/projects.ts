@@ -18,6 +18,15 @@ export type ProjectFile = {
   updated_at: string;
 };
 
+/** A version metadata row from the project-wide version search. */
+export type VersionHit = {
+  id: string;
+  file_id: string;
+  path: string;
+  label: string | null;
+  created_at: string;
+};
+
 
 // the backend's `{ error }` string is the whole message the UI shows
 async function errorOf(res: Response): Promise<Error> {
@@ -84,3 +93,7 @@ export const renameFolder = (pid: string, from: string, to: string) =>
     `/projects/${pid}/files?path=${encodeURIComponent(from)}`,
     body('PATCH', { path: to }),
   );
+
+// project-wide version search: matches a version's label or its file's path
+export const searchSnapshots = (pid: string, q: string) =>
+  req<VersionHit[]>(`/projects/${pid}/snapshots?q=${encodeURIComponent(q)}`);

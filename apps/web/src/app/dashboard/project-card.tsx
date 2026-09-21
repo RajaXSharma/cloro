@@ -4,22 +4,21 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { Project } from '@/lib/api/projects';
 
 export function ProjectCard({ project, onDeleted }: { project: Project; onDeleted: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   async function handleDelete() {
-    if (
-      !confirm(
-        `Delete "${project.name}" and its ${project.file_count} file(s)? This cannot be undone.`,
-      )
-    )
-      return;
     setBusy(true);
     const res = await api(`/projects/${project.id}`, { method: 'DELETE' });
     setBusy(false);
-    if (res.ok) onDeleted();
+    if (res.ok) {
+      setConfirming(false);
+      onDeleted();
+    }
   }
 
   return (
@@ -42,7 +41,7 @@ export function ProjectCard({ project, onDeleted }: { project: Project; onDelete
       </div>
       {project.is_owner && (
         <button
-          onClick={handleDelete}
+          onClick={() => setConfirming(true)}
           disabled={busy}
           aria-label={`Delete ${project.name}`}
           title="Delete project"
@@ -51,6 +50,18 @@ export function ProjectCard({ project, onDeleted }: { project: Project; onDelete
           <Trash2 className="size-4" aria-hidden="true" />
         </button>
       )}
+
+      <ConfirmDialog
+        open={confirming}
+        title={`Delete "${project.name}"?`}
+        description={`This removes the project and its ${project.file_count} file${
+          project.file_count === 1 ? '' : 's'
+        } for everyone. This cannot be undone.`}
+        confirmLabel="Delete project"
+        busy={busy}
+        onConfirm={handleDelete}
+        onCancel={() => !busy && setConfirming(false)}
+      />
     </li>
   );
 }

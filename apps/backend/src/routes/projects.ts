@@ -239,6 +239,29 @@ projectFilesRouter.patch("/", async (req: PidReq, res) => {
   }
 });
 
+// --- /projects/:pid/snapshots ------------------------------------------------
+//
+// Versions are per-file (`file_snapshots.file_id`), but the version search spans
+// the project: match a version by its label or by the path of the file it belongs
+// to. Metadata only, so snapshot blobs stay out of the list.
+projectsRouter.get("/:pid/snapshots", async (req, res) => {
+  if (!(await requireMember(req.params.pid, req.user!.id, res))) return;
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  if (!q) return res.json([]);
+
+  const { rows } = await query(
+    `select s.id, s.file_id, f.path, s.label, s.created_at
+       from file_snapshots s
+       join files f on f.id = s.file_id
+      where f.project_id = $1
+        and (f.path ilike '%' || $2 || '%' or coalesce(s.label, '') ilike '%' || $2 || '%')
+      order by s.created_at desc
+      limit 50`,
+    [req.params.pid, q],
+  );
+  res.json(rows);
+});
+
 // --- /projects/:pid/export --------------------------------------------------
 //
 // The whole project as a zip: one entry per file row, paths at the archive root

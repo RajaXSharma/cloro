@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { pruneTabs } from 'shared';
 import { downloadProject } from '@/lib/api/projects';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
@@ -57,20 +58,22 @@ export default function ProjectPage() {
     [close, openIds, activeId],
   );
 
-  /** Tree mutations land here: close tabs for files the server just deleted. */
-  const onFilesChange = useCallback(
-    (deletedIds?: string[]) => {
-      const gone = (deletedIds ?? []).filter((fileId) => openIds.includes(fileId));
-      for (const fileId of gone) close(fileId);
-      if (gone.length) {
-        const next = openIds.filter((fileId) => !gone.includes(fileId));
-        setOpenIds(next);
-        if (activeId && gone.includes(activeId)) setActiveId(next[next.length - 1] ?? null);
-      }
-      return refresh();
-    },
-    [openIds, activeId, close, refresh],
-  );
+  // A tab is an id into `files`, but the file list can change without this
+  // client acting: a collaborator deletes a file and the roster sync drops it
+  // from `files`. Without this the tab lingers and shows its raw id, since
+  // FileTabs falls back to the id when the path is gone.
+  useEffect(() => {
+    if (loading) return;
+    const { openIds: next, activeId: nextActive, removed } = pruneTabs(
+      openIds,
+      activeId,
+      files.map((f) => f.id),
+    );
+    if (!removed.length) return;
+    for (const fileId of removed) close(fileId);
+    setOpenIds(next);
+    setActiveId(nextActive);
+  }, [loading, files, openIds, activeId, close]);
 
   useEffect(() => {
     if (error) router.replace('/dashboard');
@@ -203,7 +206,7 @@ export default function ProjectPage() {
             files={files}
             activeId={activeId}
             onOpen={openTab}
-            onChange={onFilesChange}
+            onChange={refresh}
           />
         </aside>
 
@@ -213,7 +216,7 @@ export default function ProjectPage() {
           {session && activeFile ? (
             <>
               <div className="max-h-56 shrink-0 overflow-y-auto border-b">
-                <VersionPanel fileId={activeId!} />
+                <VersionPanel fileId={activeId!} projectId={id} path={activeFile.path} />
               </div>
               <div className="min-h-0 flex-1 overflow-hidden">
                 <AiSidebar

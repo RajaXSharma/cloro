@@ -19,6 +19,7 @@ import {
   type ProjectFile,
 } from '@/lib/api/projects';
 import { Input } from '@/components/ui/field';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { FileIcon } from './file-icons';
 
 interface Props {
@@ -28,9 +29,9 @@ interface Props {
   activeId?: string | null;
   /** Clicking a file row opens it as a tab. */
   onOpen: (fileId: string) => void;
-  /** Receives the deleted file ids so the page can close their tabs, and refetches
-   * the list, awaited before a newly created file is opened, so its tab has a path. */
-  onChange: (deletedIds?: string[]) => unknown;
+  /** Refetches the file list after a create/rename/delete; awaited before a newly
+   * created file is opened, so its tab has a path. */
+  onChange: () => unknown;
 }
 
 type Creating = { mode: 'file' | 'folder'; dir: string } | null;
@@ -62,12 +63,27 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
   const [folderName, setFolderName] = useState('');
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    action: () => Promise<unknown>;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    await pendingDelete.action();
+    setDeleting(false);
+    setPendingDelete(null);
+  }
 
   async function run<T>(op: () => Promise<T>): Promise<T | null> {
     setError('');
     try {
       const result = await op();
-      await onChange((result as { deleted?: string[] } | null)?.deleted);
+      await onChange();
       return result;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed');
@@ -207,7 +223,13 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                   </button>
                   <button
                     onClick={() =>
-                      confirm(`Delete "${node.path}"?`) && run(() => deleteFile(node.id))
+                      setPendingDelete({
+                        title: `Delete "${node.path}"?`,
+                        description:
+                          'This removes the file for everyone in the project. This cannot be undone.',
+                        confirmLabel: 'Delete',
+                        action: () => run(() => deleteFile(node.id)),
+                      })
                     }
                     title={`Delete ${node.path}`}
                     aria-label={`Delete ${node.path}`}
@@ -297,8 +319,13 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                   </button>
                   <button
                     onClick={() =>
-                      confirm(`Delete folder "${node.path}" and everything in it?`) &&
-                      run(() => deleteFolder(projectId, node.path))
+                      setPendingDelete({
+                        title: `Delete "${node.path}"?`,
+                        description:
+                          'This removes the folder and everything inside it for everyone in the project. This cannot be undone.',
+                        confirmLabel: 'Delete folder',
+                        action: () => run(() => deleteFolder(projectId, node.path)),
+                      })
                     }
                     title={`Delete folder ${node.path}`}
                     aria-label={`Delete folder ${node.path}`}
@@ -361,6 +388,16 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
           rows(tree, 0)
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete?.title ?? ''}
+        description={pendingDelete?.description}
+        confirmLabel={pendingDelete?.confirmLabel}
+        busy={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setPendingDelete(null)}
+      />
     </div>
   );
 }
