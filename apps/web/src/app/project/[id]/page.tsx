@@ -34,8 +34,22 @@ export default function ProjectPage() {
   const [downloadError, setDownloadError] = useState('');
   const shareRef = useRef<HTMLDialogElement>(null);
   const autoOpenedFor = useRef<string | null>(null);
-  const { project, files, loading, error, refresh, status, rosterStatus, rosterAwareness, open, close, getSession } =
-    useProjectSession(id, activeId);
+  const {
+    project,
+    files,
+    loading,
+    error,
+    refresh,
+    addFile,
+    setFilePaths,
+    removeFiles,
+    status,
+    rosterStatus,
+    rosterAwareness,
+    open,
+    close,
+    getSession,
+  } = useProjectSession(id, activeId);
 
   const rosterStates = useAwareness(rosterAwareness);
   const peers = rosterStates.filter((s) => s.clientID !== rosterAwareness?.clientID);
@@ -80,14 +94,9 @@ export default function ProjectPage() {
     if (error) router.replace('/dashboard');
   }, [error, router]);
 
-  // The first real file auto-opens once per project load. Placeholders are
-  // skipped: a folder's `.gitkeep` (ADR 001) is hidden in the tree, so opening it
-  // would surface a tab for a row the tree never shows. The guard is set as soon
-  // as the file list arrives, not only when a file opens, so closing the last tab
-  // cannot pop it straight back open.
   useEffect(() => {
     if (autoOpenedFor.current === id) return;
-    if (files.length === 0) return; // wait for the list before deciding
+    if (files.length === 0) return;
     autoOpenedFor.current = id;
     if (activeId || openIds.length) return; // something is already open
     const first = files.find((f) => !isPlaceholder(f.path));
@@ -212,6 +221,9 @@ export default function ProjectPage() {
             activeId={activeId}
             onOpen={openTab}
             onChange={refresh}
+            onFileAdded={addFile}
+            onFilePaths={setFilePaths}
+            onFilesRemoved={removeFiles}
           />
         </aside>
 

@@ -12,7 +12,7 @@ export function createApp() {
   const app = express();
   app.use(morgan('dev'));
   const allowedOrigins = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',');
-  app.use(cors({ origin: allowedOrigins }));
+  app.use(cors({ origin: allowedOrigins, maxAge: 600 }));
   app.use(express.json());
 
   // public routes

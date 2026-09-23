@@ -10,6 +10,8 @@ import { getProject, listFiles, type Project, type ProjectFile } from '@/lib/api
 
 const WS_URL = process.env.NEXT_PUBLIC_HOCUSPUS_URL ?? 'ws://localhost:1234';
 
+const byPath = (a: ProjectFile, b: ProjectFile) => a.path.localeCompare(b.path);
+
 // collab primitives live here now that useYDoc.ts (the single-file bridge) is gone
 export type CollabStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -29,20 +31,6 @@ export interface FileSession {
   undoManager: Y.UndoManager;
 }
 
-/**
- * Project-level state: the file list plus one collab session per open file, and
- * one roster session for the whole project (`roster:<projectId>`).
- *
- * File sessions live in a ref (not state): opening a tab also changes `openIds`
- * in the page, which is what re-renders. They are created on demand and destroyed
- * only when the tab closes or the project unmounts, so switching tabs never
- * reconnects or reloads a doc.
- *
- * The roster doc is the live mirror of the tree (Postgres is authoritative): every
- * REST file op refreshes the list and publishes it into the map, and map changes
- * from peers are merged straight into `files`, with no refetch needed. A refetch on
- * window focus repairs any divergence.
- */
 export function useProjectSession(projectId: string, activeId: string | null = null) {
   const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
@@ -61,8 +49,7 @@ export function useProjectSession(projectId: string, activeId: string | null = n
   /** Merge the roster map into `files`; unchanged rows keep their DB language. */
   const applyRoster = useCallback((map: Y.Map<string>) => {
     setFiles((prev) => {
-      // before the first sync the map is empty: keep the REST list we already have
-      if (!rosterSynced.current && map.size === 0 && prev.length > 0) return prev;
+      if (!rosterSynced.current) return prev;
       const before = new Map(prev.map((f) => [f.id, f]));
       const next: ProjectFile[] = [];
       map.forEach((path, id) => {
@@ -95,6 +82,46 @@ export function useProjectSession(projectId: string, activeId: string | null = n
     setFiles(list);
     publish(list);
   }, [projectId, publish]);
+
+  const filesRef = useRef<ProjectFile[]>([]);
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
+
+  const addFile = useCallback((file: ProjectFile) => {
+    const next = [...filesRef.current.filter((f) => f.id !== file.id), file].sort(byPath);
+    filesRef.current = next;
+    setFiles(next);
+    rosterDoc.current?.getMap<string>('files').set(file.id, file.path);
+  }, []);
+
+  const setFilePaths = useCallback(
+    (rows: Array<Pick<ProjectFile, 'id' | 'path'> & Partial<ProjectFile>>) => {
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      const next = filesRef.current
+        .map((f) => {
+          const r = byId.get(f.id);
+          return r ? { ...f, ...r } : f;
+        })
+        .sort(byPath);
+      filesRef.current = next;
+      setFiles(next);
+      const doc = rosterDoc.current;
+      const map = doc?.getMap<string>('files');
+      if (doc && map) doc.transact(() => { for (const r of rows) map.set(r.id, r.path); });
+    },
+    [],
+  );
+
+  const removeFiles = useCallback((ids: string[]) => {
+    const gone = new Set(ids);
+    const next = filesRef.current.filter((f) => !gone.has(f.id));
+    filesRef.current = next;
+    setFiles(next);
+    const doc = rosterDoc.current;
+    const map = doc?.getMap<string>('files');
+    if (doc && map) doc.transact(() => { for (const id of ids) map.delete(id); });
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -236,6 +263,9 @@ export function useProjectSession(projectId: string, activeId: string | null = n
     loading,
     error,
     refresh,
+    addFile,
+    setFilePaths,
+    removeFiles,
     status,
     rosterStatus,
     rosterAwareness,

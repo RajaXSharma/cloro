@@ -46,7 +46,6 @@ export function RegisterForm() {
         setPending(null);
         return;
       }
-      // keep the button busy: navigation to /dashboard is still in flight
       router.push("/dashboard");
       router.refresh();
     } catch {

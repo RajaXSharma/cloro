@@ -32,6 +32,9 @@ interface Props {
   /** Refetches the file list after a create/rename/delete; awaited before a newly
    * created file is opened, so its tab has a path. */
   onChange: () => unknown;
+  onFileAdded: (file: ProjectFile) => void;
+  onFilePaths: (rows: Array<Pick<ProjectFile, 'id' | 'path'> & Partial<ProjectFile>>) => void;
+  onFilesRemoved: (ids: string[]) => void;
 }
 
 type Creating = { mode: 'file' | 'folder'; dir: string } | null;
@@ -42,17 +45,16 @@ const ACTION_BUTTON =
 const ACTION_CLUSTER =
   'flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100';
 
-/**
- * The tree is derived from the flat path list (`parsePaths`), so folders are
- * prefixes, never rows: nesting comes from typing `src/lib/x.ts`, a "folder
- * delete" is a prefix delete, and there is no empty-folder state to render.
- * `New folder` writes `name/.gitkeep` (ADR 001), which the tree hides.
- *
- * Those header buttons create at the project root; a folder's own `+` creates
- * inside it instead, and a folder's pencil renames just its last segment
- * (ADR 003).
- */
-export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props) {
+export function FileTree({
+  projectId,
+  files,
+  activeId,
+  onOpen,
+  onChange,
+  onFileAdded,
+  onFilePaths,
+  onFilesRemoved,
+}: Props) {
   const [creating, setCreating] = useState<Creating>(null);
   const [newPath, setNewPath] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -79,11 +81,12 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
     setPendingDelete(null);
   }
 
-  async function run<T>(op: () => Promise<T>): Promise<T | null> {
+  async function run<T>(op: () => Promise<T>, apply?: (result: T) => void): Promise<T | null> {
     setError('');
     try {
       const result = await op();
-      await onChange();
+      if (apply) apply(result);
+      else await onChange();
       return result;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed');
@@ -117,7 +120,10 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
       setError('invalid path');
       return;
     }
-    const created = await run(() => createFile(projectId, path));
+    const created = await run(
+      () => createFile(projectId, path),
+      (file) => onFileAdded(file),
+    );
     if (!created) return;
     setNewPath(''); // the input stays open under this folder for the next name
     if (mode === 'file') onOpen(created.id); // else it is a hidden placeholder
@@ -137,7 +143,10 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
       setRenamingFolder(null);
       return;
     }
-    if (!(await run(() => renameFolder(projectId, path, to)))) return;
+    if (!(await run(
+      () => renameFolder(projectId, path, to),
+      (rows) => onFilePaths(rows),
+    ))) return;
     // keep any collapsed folder pointing at the new prefix
     setCollapsed((c) =>
       c.map((p) => (p === path || p.startsWith(`${path}/`) ? to + p.slice(path.length) : p)),
@@ -189,7 +198,13 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                 onChange={(e) => setRenamePath(e.target.value)}
                 onKeyDown={async (e) => {
                   if (e.key === 'Escape') setRenamingId(null);
-                  if (e.key === 'Enter' && (await run(() => renameFile(node.id, renamePath.trim()))))
+                  if (
+                    e.key === 'Enter' &&
+                    (await run(
+                      () => renameFile(node.id, renamePath.trim()),
+                      (file) => onFilePaths([file]),
+                    ))
+                  )
                     setRenamingId(null);
                 }}
                 onBlur={() => setRenamingId(null)}
@@ -228,7 +243,7 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                         description:
                           'This removes the file for everyone in the project. This cannot be undone.',
                         confirmLabel: 'Delete',
-                        action: () => run(() => deleteFile(node.id)),
+                        action: () => run(() => deleteFile(node.id), (r) => onFilesRemoved(r.deleted)),
                       })
                     }
                     title={`Delete ${node.path}`}
@@ -324,7 +339,10 @@ export function FileTree({ projectId, files, activeId, onOpen, onChange }: Props
                         description:
                           'This removes the folder and everything inside it for everyone in the project. This cannot be undone.',
                         confirmLabel: 'Delete folder',
-                        action: () => run(() => deleteFolder(projectId, node.path)),
+                        action: () =>
+                          run(() => deleteFolder(projectId, node.path), (r) =>
+                            onFilesRemoved(r.deleted),
+                          ),
                       })
                     }
                     title={`Delete folder ${node.path}`}
