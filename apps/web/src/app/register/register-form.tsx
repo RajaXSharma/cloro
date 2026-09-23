@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { LoaderCircle } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
@@ -21,26 +22,37 @@ export function RegisterForm() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [pending, setPending] = useState<"register" | "signin" | null>(null);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    const res = await fetch(`${API_URL}/auth/register`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
-    });
-    if (!res.ok) {
-      setError(res.status === 409 ? "email already registered" : "invalid fields");
-      return;
+    setPending("register");
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+      });
+      if (!res.ok) {
+        setError(res.status === 409 ? "email already registered" : "invalid fields");
+        setPending(null);
+        return;
+      }
+      setPending("signin");
+      const signInRes = await signIn("credentials", { email, password, redirect: false });
+      if (signInRes?.error) {
+        setError("sign-in failed, try logging in");
+        setPending(null);
+        return;
+      }
+      // keep the button busy: navigation to /dashboard is still in flight
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("something went wrong, try again");
+      setPending(null);
     }
-    const signInRes = await signIn("credentials", { email, password, redirect: false });
-    if (signInRes?.error) {
-      setError("sign-in failed, try logging in");
-      return;
-    }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -90,8 +102,18 @@ export function RegisterForm() {
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <FormError>{error}</FormError>}
-        <Button type="submit" className="h-9 w-full">
-          Register
+        <Button
+          type="submit"
+          className="h-9 w-full"
+          disabled={pending !== null}
+          aria-busy={pending !== null}
+        >
+          {pending !== null && <LoaderCircle className="animate-spin" aria-hidden="true" />}
+          {pending === "register"
+            ? "Creating account…"
+            : pending === "signin"
+              ? "Signing in…"
+              : "Register"}
         </Button>
       </form>
     </AuthShell>

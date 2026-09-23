@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { LoaderCircle } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { GitHubMark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
@@ -14,17 +15,35 @@ export function LoginForm({ showGithub }: { showGithub: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [pending, setPending] = useState<"github" | "credentials" | null>(null);
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    const res = await signIn("credentials", { email, password, redirect: false });
-    if (res?.error) {
-      setError("invalid credentials");
-      return;
+    setPending("credentials");
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
+      if (res?.error) {
+        setError("invalid credentials");
+        setPending(null);
+        return;
+      }
+      // keep the button busy: navigation to /dashboard is still in flight
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("something went wrong, try again");
+      setPending(null);
     }
-    router.push("/dashboard");
-    router.refresh();
+  }
+
+  function handleGithub() {
+    setError("");
+    setPending("github");
+    void signIn("github", { callbackUrl: "/dashboard" }).catch(() => {
+      setError("something went wrong, try again");
+      setPending(null);
+    });
   }
 
   return (
@@ -46,9 +65,15 @@ export function LoginForm({ showGithub }: { showGithub: boolean }) {
             type="button"
             variant="outline"
             className="h-9 w-full"
-            onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+            disabled={pending !== null}
+            aria-busy={pending === "github"}
+            onClick={handleGithub}
           >
-            <GitHubMark className="size-4" />
+            {pending === "github" ? (
+              <LoaderCircle className="animate-spin" aria-hidden="true" />
+            ) : (
+              <GitHubMark className="size-4" />
+            )}
             Continue with GitHub
           </Button>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -80,8 +105,16 @@ export function LoginForm({ showGithub }: { showGithub: boolean }) {
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <FormError>{error}</FormError>}
-        <Button type="submit" className="h-9 w-full">
-          Sign in
+        <Button
+          type="submit"
+          className="h-9 w-full"
+          disabled={pending !== null}
+          aria-busy={pending === "credentials"}
+        >
+          {pending === "credentials" && (
+            <LoaderCircle className="animate-spin" aria-hidden="true" />
+          )}
+          {pending === "credentials" ? "Signing in…" : "Sign in"}
         </Button>
       </form>
     </AuthShell>

@@ -5,6 +5,7 @@ import { UserPlus, X } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { FormError, TextField } from '@/components/ui/field';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Collaborator {
   id: string;
@@ -106,7 +107,22 @@ export function ShareDialog({
       </form>
 
       {collabs === null ? (
-        <p className="pt-4 text-xs text-muted-foreground">Loading…</p>
+        <>
+          <p role="status" className="sr-only">
+            Loading collaborators
+          </p>
+          <ul className="flex flex-col divide-y pt-2" aria-hidden="true">
+            {[0, 1].map((i) => (
+              <li key={i} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0 flex-1">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="mt-1.5 h-3 w-40" />
+                </span>
+                <Skeleton className="h-3 w-12" />
+              </li>
+            ))}
+          </ul>
+        </>
       ) : collabs.length === 0 ? (
         <p className="pt-4 text-xs text-muted-foreground">No collaborators yet.</p>
       ) : (

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
-import { pruneTabs } from 'shared';
+import { isPlaceholder, pruneTabs } from 'shared';
 import { downloadProject } from '@/lib/api/projects';
 import { useProjectSession } from '@/lib/yjs/useProjectSession';
 import { FileTree } from '@/components/files/FileTree';
@@ -16,6 +16,7 @@ import { VersionPanel } from '@/components/editor/version-panel';
 import { ShareDialog } from '@/components/editor/share-dialog';
 import { AiSidebar } from '@/components/ai/ai-sidebar';
 import { CursorStyles, ProjectRoster, useAwareness } from '@/components/editor/presence';
+import { WorkspaceSkeleton } from '@/components/project/workspace-skeleton';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -79,17 +80,21 @@ export default function ProjectPage() {
     if (error) router.replace('/dashboard');
   }, [error, router]);
 
-  // the first file auto-opens once the list arrives, once per project. The guard
-  // cannot key off `openIds` alone: closing the last tab empties it, which looks
-  // identical to "nothing opened yet" and pops the tab straight back open.
+  // The first real file auto-opens once per project load. Placeholders are
+  // skipped: a folder's `.gitkeep` (ADR 001) is hidden in the tree, so opening it
+  // would surface a tab for a row the tree never shows. The guard is set as soon
+  // as the file list arrives, not only when a file opens, so closing the last tab
+  // cannot pop it straight back open.
   useEffect(() => {
-    if (autoOpenedFor.current === id || activeId || openIds.length || files.length === 0) return;
+    if (autoOpenedFor.current === id) return;
+    if (files.length === 0) return; // wait for the list before deciding
     autoOpenedFor.current = id;
-    openTab(files[0].id);
+    if (activeId || openIds.length) return; // something is already open
+    const first = files.find((f) => !isPlaceholder(f.path));
+    if (first) openTab(first.id);
   }, [id, files, activeId, openIds.length, openTab]);
 
-  if (loading || !project)
-    return <p className="p-8 text-sm text-muted-foreground">Loading…</p>;
+  if (loading || !project) return <WorkspaceSkeleton />;
 
   const session = activeId ? getSession(activeId) : null;
   const activeFile = files.find((f) => f.id === activeId) ?? null;
