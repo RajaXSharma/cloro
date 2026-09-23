@@ -10,8 +10,6 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { FormError, TextField } from "@/components/ui/field";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
 /** Mirrors the backend's zod schema: name >= 3, password >= 6. */
 const NAME_MIN = 3;
 const PASSWORD_MIN = 6;
@@ -29,7 +27,7 @@ export function RegisterForm() {
     setError("");
     setPending("register");
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
+      const res = await fetch("/backend/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, password, name }),

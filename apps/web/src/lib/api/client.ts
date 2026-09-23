@@ -20,7 +20,7 @@ export async function api(path: string, init: RequestInit = {}): Promise<Respons
       headers.set('Content-Type', 'application/json');
     }
     headers.set('Authorization', `Bearer ${t}`);
-    return fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}${path}`, {
+    return fetch(`/backend${path}`, {
       ...init,
       headers,
     });
